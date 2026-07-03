@@ -1,0 +1,495 @@
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import PageHero from '../components/layout/PageHero';
+import { Search, ShoppingCart, X, Minus, Plus } from 'lucide-react';
+
+export default function Menu() {
+  const { tambahKeKeranjang } = useCart();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kategoriUrl = searchParams.get('kategori') || 'semua';
+
+  const [pencarian, setPencarian] = useState('');
+  const [kategoriAktif, setKategoriAktif] = useState(kategoriUrl);
+
+  // Customization Form States untuk Detail Modal
+  const [modalDetailBuka, setModalDetailBuka] = useState(false);
+  const [menuDetail, setMenuDetail] = useState(null);
+  const [ukuranTerpilih, setUkuranTerpilih] = useState('Medium'); // 'Medium' atau 'Large'
+  const [jumlah, setJumlah] = useState(1);
+  const [catatan, setCatatan] = useState('');
+
+  // Sync kategoriAktif with URL search param
+  useEffect(() => {
+    setKategoriAktif(kategoriUrl);
+  }, [kategoriUrl]);
+
+  // Helper untuk hitung harga berdasarkan ukuran dari brosur resmi
+  const hitungHargaUkuran = (menu, ukuran) => {
+    if (!menu || !menu.nama) return 0;
+    if (menu.nama.includes("1/2 Meter")) {
+      return 130000;
+    }
+    
+    const mappingHarga = {
+      "Sosis Lovers Pizza": { Medium: 35000, Large: 50000 },
+      "Beef Slice Pizza": { Medium: 35000, Large: 50000 },
+      "Abon Sapi Pizza": { Medium: 35000, Large: 50000 },
+      "Cheese Corn Moza Pizza": { Medium: 45000, Large: 60000 },
+      "Beef Burger Moza Pizza": { Medium: 50000, Large: 70000 },
+      "Chicken Mushroom Moza": { Medium: 60000, Large: 80000 },
+      "Combo Mix Special Pizza": { Medium: 60000, Large: 80000 }
+    };
+
+    const namaAman = menu.nama;
+    const hargaAsli = typeof menu.harga === 'number' ? menu.harga : parseInt(menu.harga) || 35000;
+
+    const configHarga = mappingHarga[namaAman] || { Medium: hargaAsli, Large: hargaAsli + 15000 };
+    const hasil = ukuran === 'Large' ? configHarga.Large : configHarga.Medium;
+    return typeof hasil === 'number' && !isNaN(hasil) ? hasil : hargaAsli;
+  };
+
+  const handleBukaDetail = (menu) => {
+    setMenuDetail(menu);
+    setUkuranTerpilih('Medium');
+    setJumlah(1);
+    setCatatan('');
+    setModalDetailBuka(true);
+  };
+
+  const handleTambahDetailKeKeranjang = (langsungCheckout = false) => {
+    const hargaFinal = hitungHargaUkuran(menuDetail, ukuranTerpilih);
+    const namaFinal = menuDetail.nama.includes("1/2 Meter") 
+      ? menuDetail.nama 
+      : `${menuDetail.nama} (${ukuranTerpilih})`;
+
+    const menuKustom = {
+      ...menuDetail,
+      nama: namaFinal,
+      harga: hargaFinal
+    };
+
+    // Format catatan: gabungan catatan kustom dan pilihan ukuran
+    const catatanFinal = catatan 
+      ? `[Ukuran: ${ukuranTerpilih}] ${catatan}` 
+      : `Ukuran: ${ukuranTerpilih}`;
+
+    const sukses = tambahKeKeranjang(menuKustom, jumlah, catatanFinal);
+    
+    if (sukses) {
+      setModalDetailBuka(false);
+      if (langsungCheckout) {
+        window.location.href = "/keranjang";
+      } else {
+        alert(`${namaFinal} berhasil ditambahkan ke keranjang! 🍕🛒`);
+      }
+    }
+  };
+
+  const [semuaMenu, setSemuaMenu] = useState([]);
+
+  useEffect(() => {
+    const defaultPizzaMenus = [
+      {
+        id: 1,
+        nama: "Sosis Lovers Pizza",
+        deskripsi: "Pizza lezat dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, sosis sapi/ayam, dan oregano.",
+        harga: 35000,
+        stok: 15,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
+        rating: 4.8,
+        ulasan: 120,
+        tersedia: true
+      },
+      {
+        id: 2,
+        nama: "Beef Slice Pizza",
+        deskripsi: "Pizza gurih dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, beef slice melimpah, dan oregano.",
+        harga: 35000,
+        stok: 12,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
+        rating: 4.9,
+        ulasan: 340,
+        tersedia: true
+      },
+      {
+        id: 3,
+        nama: "Abon Sapi Pizza",
+        deskripsi: "Pizza unik nusantara dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, abon sapi premium, dan oregano.",
+        harga: 35000,
+        stok: 10,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&q=80&w=300",
+        rating: 4.7,
+        ulasan: 95,
+        tersedia: true
+      },
+      {
+        id: 4,
+        nama: "Cheese Corn Moza Pizza",
+        deskripsi: "Perpaduan manis gurih saos tomat/sambal, mayo, SKM vanilla, jagung manis, keju cheddar, Moza lumer, dan oregano.",
+        harga: 45000,
+        stok: 8,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1573821663912-569905455b1c?auto=format&fit=crop&q=80&w=300",
+        rating: 4.6,
+        ulasan: 80,
+        tersedia: true
+      },
+      {
+        id: 5,
+        nama: "Beef Burger Moza Pizza",
+        deskripsi: "Kenikmatan ekstra saos tomat/sambal, mayo, jagung, bombai, keju cheddar, mozzarella lumer, dan beef burger tumis bumbu.",
+        harga: 50000,
+        stok: 10,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&q=80&w=300",
+        rating: 4.7,
+        ulasan: 150,
+        tersedia: true
+      },
+      {
+        id: 6,
+        nama: "Chicken Mushroom Moza",
+        deskripsi: "Pizza spesial dengan saos tomat/sambal, mayo, jagung, bombai, keju cheddar, mozzarella, dan tumisan daging ayam jamur gurih.",
+        harga: 60000,
+        stok: 12,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=300",
+        rating: 4.5,
+        ulasan: 75,
+        tersedia: true
+      },
+      {
+        id: 7,
+        nama: "Combo Mix Special Pizza",
+        deskripsi: "Paket komplit saos tomat/sambal, mayo, jagung, bombai, keju cheddar, Moza, sosis sapi, sosis ayam, dan beef slice premium.",
+        harga: 60000,
+        stok: 8,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
+        rating: 4.8,
+        ulasan: 110,
+        tersedia: true
+      },
+      {
+        id: 8,
+        nama: "Pizza 1/2 Meter (Raksasa)",
+        deskripsi: "Pizza raksasa 1/2 meter dengan kombinasi topping spesial Sosis Lovers mix Beef Burger Moza. Sempurna untuk pesta!",
+        harga: 130000,
+        stok: 5,
+        kategori: "pizza",
+        gambar_url: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
+        rating: 4.9,
+        ulasan: 220,
+        tersedia: true
+      }
+    ];
+
+    // Jalankan sinkronisasi dengan Go REST API (MySQL)
+    fetch('http://localhost:8080/api/menus')
+      .then(res => {
+        if (!res.ok) throw new Error("Gagal load API");
+        return res.json();
+      })
+      .then(data => {
+        if (data && Array.isArray(data) && data.length > 0) {
+          // Khusus pizza saja
+          const dataPizza = data.filter(m => m.kategori === 'pizza');
+          setSemuaMenu(dataPizza);
+          localStorage.setItem('vipizza_menu_mock', JSON.stringify(data));
+        } else {
+          loadDariLokal();
+        }
+      })
+      .catch(() => {
+        loadDariLokal();
+      });
+
+    function loadDariLokal() {
+      const databaseMenu = JSON.parse(localStorage.getItem('vipizza_menu_mock') || '[]');
+      const isOldMock = databaseMenu.some(m => m.nama === "Margherita Pizza" || m.nama === "Tuna Pizza" || m.nama === "Meat Lovers Pizza" || m.nama === "Jagung" || m.kategori === "side" || m.kategori === "drink");
+
+      if (databaseMenu.length === 0 || isOldMock) {
+        localStorage.setItem('vipizza_menu_mock', JSON.stringify(defaultPizzaMenus));
+        setSemuaMenu(defaultPizzaMenus);
+      } else {
+        setSemuaMenu(databaseMenu.filter(m => m.kategori === 'pizza'));
+      }
+    }
+  }, []);
+
+  const handleKategoriChange = (kat) => {
+    setKategoriAktif(kat);
+    setSearchParams(kat === 'semua' ? {} : { kategori: kat });
+  };
+
+  // Filter Menu Berdasarkan Pencarian (Khusus Kategori Pizza saja!)
+  const menuTerfilter = semuaMenu.filter(menu => {
+    const cocokPencarian = menu.nama.toLowerCase().includes(pencarian.toLowerCase()) || 
+                           menu.deskripsi.toLowerCase().includes(pencarian.toLowerCase());
+    return cocokPencarian;
+  });
+
+  return (
+    <div>
+      <PageHero
+        title="Menu Pizza"
+        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Menu' }]}
+      />
+
+      <div className="py-10 bg-[#f8f9fa]">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="section-heading">
+            <h2>Pilihan Menu Pizza</h2>
+            <p className="text-[#6c757d] text-sm mt-2">Pizza homemade dipanggang segar, siap antar ke Kota Padang</p>
+          </div>
+
+          <div className="mb-8 max-w-sm relative">
+            <input
+              type="text"
+              placeholder="Cari pizza favorit..."
+              value={pencarian}
+              onChange={(e) => setPencarian(e.target.value)}
+              className="input-bs pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c757d]" />
+          </div>
+
+      {menuTerfilter.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {menuTerfilter.map((menu) => {
+            const habis = menu.stok === 0;
+            return (
+              <div
+                key={menu.id}
+                className={`card-bs overflow-hidden flex flex-col relative ${habis ? 'opacity-60' : ''}`}
+              >
+                {habis && (
+                  <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded z-10">
+                    Habis
+                  </span>
+                )}
+
+                <div
+                  className="h-44 overflow-hidden cursor-pointer"
+                  onClick={() => { if (!habis) handleBukaDetail(menu); }}
+                >
+                  <img
+                    src={menu.gambar_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300'}
+                    alt={menu.nama}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+
+                <div className="p-4 flex flex-col flex-1">
+                  <h3 className="font-bold text-[#212529] text-base mb-1">{menu.nama}</h3>
+                  <p className="text-[#6c757d] text-xs leading-relaxed line-clamp-2 mb-2 flex-1">
+                    {menu.deskripsi}
+                  </p>
+                  <p className="font-bold text-[#0b5345] text-lg mb-1">
+                    Rp {menu.harga.toLocaleString('id-ID')}
+                  </p>
+                  {!habis && (
+                    <p className="text-[10px] text-emerald-600 font-medium mb-3">
+                      Stok: {menu.stok} porsi
+                    </p>
+                  )}
+
+                  <button
+                    disabled={habis}
+                    onClick={() => { if (!habis) handleBukaDetail(menu); }}
+                    className={`w-full text-sm py-2 flex items-center justify-center gap-1.5 ${
+                      habis ? 'bg-[#e9ecef] text-[#6c757d] cursor-not-allowed rounded' : 'btn-primary'
+                    }`}
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    Lihat Detail
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="card-bs text-center py-12 max-w-md mx-auto">
+          <span className="text-3xl">🔍</span>
+          <h3 className="font-bold text-[#212529] mt-3">Menu tidak ditemukan</h3>
+          <p className="text-[#6c757d] text-xs mt-2">Coba kata kunci lain</p>
+          <button className="btn-secondary text-xs mt-4 py-2 px-4" onClick={() => setPencarian('')}>
+            Reset Pencarian
+          </button>
+        </div>
+      )}
+        </div>
+      </div>
+
+      {/* ==================== MODAL DETAIL & CUSTOMIZATION PIZZA ==================== */}
+      {modalDetailBuka && menuDetail && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto text-left">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto flex flex-col">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 shrink-0">
+              <h3 className="font-serif font-extrabold text-slate-800 text-lg md:text-xl">
+                Kustomisasi Pesanan
+              </h3>
+              <button 
+                className="p-1.5 hover:bg-slate-100 rounded-full cursor-pointer transition-colors"
+                onClick={() => setModalDetailBuka(false)}
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Content Modal */}
+            <div className="p-6 overflow-y-auto max-h-[70vh] flex flex-col gap-5">
+              
+              {/* Info Pizza Row */}
+              <div className="flex gap-4">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shrink-0 bg-slate-50">
+                  <img 
+                    src={menuDetail.gambar_url || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300"} 
+                    alt={menuDetail.nama} 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300";
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col justify-center text-left">
+                  <h4 className="font-bold text-slate-800 text-base md:text-lg leading-tight">{menuDetail.nama}</h4>
+                  <p className="text-slate-400 text-xs mt-1 leading-relaxed line-clamp-2">{menuDetail.deskripsi}</p>
+                </div>
+              </div>
+
+              {/* Pilihan Ukuran (Jika bukan pizza 1/2 meter) */}
+              {!menuDetail.nama.includes("1/2 Meter") ? (
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Pilih Ukuran Pizza</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    
+                    {/* Ukuran Medium */}
+                    <button
+                      type="button"
+                      className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
+                        ukuranTerpilih === 'Medium'
+                          ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                      onClick={() => setUkuranTerpilih('Medium')}
+                    >
+                      <span className="font-extrabold text-slate-800 text-sm">Ukuran Medium 🍕</span>
+                      <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 1-2 Orang</span>
+                      <span className="font-bold text-brand-orange text-xs mt-1">
+                        Rp {hitungHargaUkuran(menuDetail, 'Medium').toLocaleString('id-ID')}
+                      </span>
+                    </button>
+
+                    {/* Ukuran Large */}
+                    <button
+                      type="button"
+                      className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
+                        ukuranTerpilih === 'Large'
+                          ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                      onClick={() => setUkuranTerpilih('Large')}
+                    >
+                      <span className="font-extrabold text-slate-800 text-sm">Ukuran Large 🍕🔥</span>
+                      <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 3-4 Orang</span>
+                      <span className="font-bold text-brand-orange text-xs mt-1">
+                        Rp {hitungHargaUkuran(menuDetail, 'Large').toLocaleString('id-ID')}
+                      </span>
+                    </button>
+
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200/50 p-4 rounded-2xl">
+                  <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ukuran Spesial Raksasa</span>
+                  <span className="block font-bold text-slate-800 text-sm mt-0.5">Pizza Raksasa Panjang 1/2 Meter</span>
+                  <span className="block font-extrabold text-brand-orange text-base mt-1">Rp 130.000</span>
+                </div>
+              )}
+
+              {/* Kuantitas (Jumlah Porsi) */}
+              <div className="flex items-center justify-between border-t border-b border-slate-100 py-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Jumlah Pembelian</label>
+                  <span className="text-slate-400 text-[10px] font-semibold">Atur kuantitas porsi pizza Anda</span>
+                </div>
+                <div className="flex items-center gap-3.5 border border-slate-200 rounded-full p-1.5 bg-slate-50 shadow-inner">
+                  <button
+                    type="button"
+                    disabled={jumlah <= 1}
+                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    onClick={() => setJumlah(jumlah - 1)}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="font-extrabold text-slate-800 text-sm w-5 text-center">{jumlah}</span>
+                  <button
+                    type="button"
+                    disabled={jumlah >= menuDetail.stok}
+                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    onClick={() => setJumlah(jumlah + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Catatan Pemesanan (Bawang, Pedas, Keju dll) */}
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Catatan Pemesanan (Opsional)</label>
+                  <span className="text-[10px] text-brand-orange font-bold">Opsional</span>
+                </div>
+                <textarea
+                  placeholder="Contoh: Extra keju, Pedas level 2, Tanpa bawang bombay..."
+                  value={catatan}
+                  onChange={(e) => setCatatan(e.target.value)}
+                  rows={2.5}
+                  className="w-full border border-slate-200 rounded-2xl p-3 bg-slate-50 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none leading-relaxed"
+                />
+              </div>
+
+            </div>
+
+            {/* Footer Modal Action Buttons */}
+            <div className="p-6 border-t border-slate-100 shrink-0 bg-slate-50/50 flex flex-col gap-2.5">
+              <div className="flex justify-between items-center mb-2.5">
+                <span className="text-slate-400 font-bold text-xs uppercase">Estimasi Total</span>
+                <span className="font-extrabold text-brand-orange text-lg md:text-xl">
+                  Rp {(hitungHargaUkuran(menuDetail, ukuranTerpilih) * jumlah).toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="btn-primary font-extrabold rounded-full py-3.5 px-6 flex-1 text-sm shadow-md shadow-pink-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  onClick={() => handleTambahDetailKeKeranjang(true)}
+                >
+                  Beli & Langsung Checkout 🚀
+                </button>
+                <button
+                  type="button"
+                  className="bg-white border border-slate-200 hover:border-brand-orange hover:text-brand-orange text-slate-600 font-bold rounded-full py-3.5 px-5 text-sm transition-colors cursor-pointer flex items-center justify-center"
+                  onClick={() => handleTambahDetailKeKeranjang(false)}
+                >
+                  Masukkan Keranjang 🛒
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
