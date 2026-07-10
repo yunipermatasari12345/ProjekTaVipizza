@@ -1,103 +1,332 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  CheckCircle2,
-  Hourglass,
-  Package,
-  Truck,
-  UtensilsCrossed,
+import Swal from 'sweetalert2';
+import { 
+  CheckCircle2, 
+  Hourglass, 
+  FileText, 
+  Upload, 
+  Truck, 
+  UtensilsCrossed, 
+  QrCode, 
+  Copy,
   ChevronLeft,
-  X,
-  CreditCard,
-  Wallet,
-  Clock
+  X
 } from 'lucide-react';
 
 export default function TrackOrder() {
   const { id } = useParams();
   const [pesanan, setPesanan] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State Upload
+  const [fileBukti, setFileBukti] = useState(null);
+  const [buktiPreview, setBuktiPreview] = useState(null);
+  const [namaBank, setNamaBank] = useState('');
+  const [namaPengirim, setNamaPengirim] = useState('');
+  const [prosesUpload, setProsesUpload] = useState(false);
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  const [verifikasiLoading, setVerifikasiLoading] = useState(false);
+  const [snapTokenAktif, setSnapTokenAktif] = useState('');
+
   const { token } = useAuth();
 
+  // Load Pesanan dari Database / LocalStorage Fallback
   useEffect(() => {
     const muatPesanan = async () => {
       setLoading(true);
+      let pesananDitemukan = null;
 
-      try {
-        const response = await fetch(`http://localhost:8080/api/orders/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      // Coba ambil dari REST API Backend
+      if (token) {
+        try {
+          const response = await fetch(`http://localhost:8080/api/orders/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.id) {
-            setPesanan({
-              id: data.id,
-              tanggal_pesanan: data.tanggal_pesanan || data.Created_at,
-              total_harga: data.total_harga,
-              status: data.status,
-              status_pembayaran: data.status_pembayaran,
-              alamat_pengiriman: data.alamat_pengiriman,
-              telepon: data.telepon,
-              catatan: data.catatan || '',
-              nama_penerima: data.nama_penerima || data.pengguna?.nama || '',
-              metode_pembayaran: data.metode_pembayaran,
-              snap_token: data.snap_token || '',
-              items: data.item_pesanan ? data.item_pesanan.map(item => ({
-                menu_id: item.menu_id,
-                menu_nama: item.menu ? item.menu.nama : 'Pizza',
-                jumlah: item.jumlah,
-                harga: item.harga,
-                catatan: item.catatan || ''
-              })) : []
-            });
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.id) {
+              // Map format backend ke format frontend UI
+              pesananDitemukan = {
+                id: data.id,
+                tanggal_pesanan: data.tanggal_pesanan || data.CreatedAt || new Date().toISOString(),
+                total_harga: data.total_harga,
+                status: data.status,
+                alamat_pengiriman: data.alamat_pengiriman,
+                telepon: data.telepon,
+                metode_pembayaran: data.metode_pembayaran,
+                bukti_pembayaran: data.bukti_pembayaran ? `http://localhost:8080${data.bukti_pembayaran}` : "",
+                nama_bank: data.nama_bank || "",
+                nama_pengirim: data.nama_pengirim || "",
+                snap_token: data.snap_token || "",
+                items: data.item_pesanan ? data.item_pesanan.map(item => ({
+                  menu_id: item.menu_id,
+                  menu_nama: item.menu ? item.menu.nama : "Pizza Homemade",
+                  jumlah: item.jumlah,
+                  harga: item.harga
+                })) : []
+              };
+            }
           }
-        } else {
-          const errData = await response.json();
-          console.warn('Gagal mengambil pesanan:', errData.error);
+        } catch (err) {
+          console.warn("Koneksi API backend offline. Menggunakan database simulasi lokal.", err.message);
         }
-      } catch (err) {
-        console.warn('Koneksi backend offline:', err.message);
       }
 
+      // Fallback ke LocalStorage jika offline atau tidak ditemukan di API
+      if (!pesananDitemukan) {
+        const daftarPesanan = JSON.parse(localStorage.getItem('vipizza_orders_mock') || '[]');
+        pesananDitemukan = daftarPesanan.find(p => p.id === parseInt(id));
+      }
+
+      // Jika benar-benar tidak ada di mana pun, buat mock default
+      if (!pesananDitemukan) {
+        pesananDitemukan = {
+          id: parseInt(id) || 482910,
+          tanggal_pesanan: new Date().toISOString(),
+          total_harga: 85000,
+          status: "menunggu_pembayaran",
+          alamat_pengiriman: "Jl. Khatib Sulaiman No. 12, Padang Utara, Padang",
+          telepon: "082345678901",
+          metode_pembayaran: "transfer_bank",
+          bukti_pembayaran: "",
+          nama_bank: "",
+          nama_pengirim: "",
+          snap_token: "",
+          items: [
+            { menu_id: 1, menu_nama: "Margherita Pizza", jumlah: 1, harga: 55000, catatan: "Pedas level 2" },
+            { menu_id: 7, menu_nama: "Pisang Cokelat", jumlah: 2, harga: 15000, catatan: "Extra cokelat lumer" }
+          ]
+        };
+      }
+
+      setPesanan(pesananDitemukan);
+      // Simpan snap token ke state terpisah agar bisa diupdate tanpa reload
+      setSnapTokenAktif(pesananDitemukan.snap_token || '');
+      if (pesananDitemukan.bukti_pembayaran) {
+        setBuktiPreview(pesananDitemukan.bukti_pembayaran);
+      }
+      if (pesananDitemukan.nama_bank) {
+        setNamaBank(pesananDitemukan.nama_bank);
+      }
+      if (pesananDitemukan.nama_pengirim) {
+        setNamaPengirim(pesananDitemukan.nama_pengirim);
+      }
       setLoading(false);
     };
 
     muatPesanan();
   }, [id, token]);
 
-  const labelStatus = (s) => {
-    const map = {
-      menunggu_pembayaran: 'Menunggu Pembayaran',
-      diproses: 'Diproses',
-      sedang_diantar: 'Sedang Diantar',
-      selesai: 'Selesai',
-      dibatalkan: 'Dibatalkan',
-    };
-    return map[s] || s;
+  // Fungsi untuk refresh snap token yang sudah kadaluarsa
+  const handleRefreshToken = async () => {
+    if (!token || isRefreshingToken) return;
+    setIsRefreshingToken(true);
+    try {
+      const response = await fetch(`http://localhost:8080/api/orders/${id}/refresh-token`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok && data.snap_token) {
+        setSnapTokenAktif(data.snap_token);
+        // Langsung buka popup Midtrans dengan token baru
+        if (window.snap) {
+          window.snap.pay(data.snap_token, {
+            onSuccess: function() { 
+              fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+              }).catch(function(){});
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Pembayaran berhasil!', timer: 2000, showConfirmButton: false }); 
+              setPesanan(function(prev) { return {...prev, status: 'diproses'}; }); 
+            },
+            onPending: function() {
+              Swal.fire({ icon: 'info', title: 'Pending', text: 'Pembayaran tertunda/diproses. Sistem akan mengecek otomatis.' });
+            },
+            onError: function() { Swal.fire({ icon: 'error', title: 'Gagal', text: 'Pembayaran gagal.' }); },
+            onClose: function() { Swal.fire({ icon: 'warning', title: 'Batal', text: 'Jendela ditutup sebelum pembayaran selesai.' }); }
+          });
+        } else {
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Token diperbarui! Silakan klik "Lanjutkan Pembayaran" sekali lagi.' });
+        }
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal memperbarui token: ' + (data.error || 'Terjadi kesalahan') });
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Offline', text: 'Tidak bisa terhubung ke server. Pastikan backend berjalan.' });
+    } finally {
+      setIsRefreshingToken(false);
+    }
   };
 
-  const labelPembayaran = (s) => {
-    const map = {
-      belum_dibayar: 'Belum Dibayar',
-      lunas: 'Lunas',
-    };
-    return map[s] || s;
-  };
-
-  const handleBayarMidtrans = () => {
-    if (window.snap && pesanan?.snap_token) {
-      window.snap.pay(pesanan.snap_token, {
-        onSuccess: () => { window.location.reload(); },
-        onPending: () => { window.location.reload(); },
-        onError: () => alert('Pembayaran gagal.'),
-        onClose: () => { },
+  const handleLanjutkanBayar = () => {
+    const tokenPakai = snapTokenAktif || (pesanan && pesanan.snap_token);
+    if (window.snap && tokenPakai) {
+      window.snap.pay(tokenPakai, {
+        onSuccess: function() {
+          fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+          }).catch(function(){});
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Pembayaran berhasil! Halaman akan diperbarui.', timer: 2000, showConfirmButton: false }).then(function(){ window.location.reload(); });
+        },
+        onPending: function() {
+          Swal.fire({ icon: 'info', title: 'Pending', text: 'Pembayaran tertunda/diproses. Silakan refresh halaman ini nanti.' });
+        },
+        onError: function(result) {
+          var msg = result && result.status_message || '';
+          if (msg.toLowerCase().includes('expire') || msg.toLowerCase().includes('invalid')) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Token Kadaluarsa',
+              text: 'Token pembayaran sudah kadaluarsa. Klik OK untuk minta token baru secara otomatis.',
+              showCancelButton: true
+            }).then(function(res) {
+              if (res.isConfirmed) handleRefreshToken();
+            });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Pembayaran gagal: ' + msg });
+          }
+        },
+        onClose: function() { alert('Jendela ditutup sebelum pembayaran selesai.'); }
       });
     } else {
-      alert('Token pembayaran tidak tersedia.');
+      alert('Sistem pembayaran sedang dimuat, mohon tunggu sebentar lalu coba lagi.');
+    }
+  };
+
+  const salinRekening = (teks) => {
+    navigator.clipboard.writeText(teks);
+    Swal.fire({ icon: 'success', title: 'Tersalin', text: `Nomor rekening '${teks}' berhasil disalin! 📋`, timer: 1500, showConfirmButton: false });
+  };
+
+  const handleCekStatusPembayaran = async () => {
+    if (!token) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Anda harus login untuk memeriksa status pembayaran.' });
+      return;
+    }
+
+    setVerifikasiLoading(true);
+    try {
+      const response = await fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setPesanan(prev => ({
+          ...prev,
+          status: data.status_pesanan || prev.status,
+          status_pembayaran: data.status_pembayaran || prev.status_pembayaran
+        }));
+        Swal.fire({ icon: 'success', title: 'Terupdate', text: `Status pembayaran: ${data.status_pembayaran || 'tidak berubah'}` });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: data.error || 'Tidak dapat memeriksa status pembayaran.' });
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Kesalahan', text: 'Tidak dapat terhubung ke server. Pastikan backend berjalan.' });
+    } finally {
+      setVerifikasiLoading(false);
+    }
+  };
+
+  // Proses upload bukti bayar ke GORM/MySQL atau fallback lokal
+  const handleUploadBukti = async (e) => {
+    e.preventDefault();
+    if (!fileBukti && !buktiPreview) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon pilih file foto bukti pembayaran terlebih dahulu!' });
+      return;
+    }
+
+    if (!namaBank || !namaPengirim) {
+      Swal.fire({ icon: 'warning', title: 'Oops', text: "Mohon isi nama bank/e-wallet dan nama rekening pengirim!" });
+      return;
+    }
+
+    setProsesUpload(true);
+
+    let databaseSuccess = false;
+    let finalGambarURL = buktiPreview || "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300";
+
+    // Coba upload ke GORM REST API Backend (XAMPP MySQL) jika token valid
+    if (token && token !== "mock_jwt_token_vipizza" && fileBukti) {
+      try {
+        const formData = new FormData();
+        formData.append("bukti", fileBukti);
+        formData.append("nama_bank", namaBank);
+        formData.append("nama_pengirim", namaPengirim);
+
+        const response = await fetch(`http://localhost:8080/api/orders/${id}/payment`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const res = await response.json();
+          if (res && res.bukti_pembayaran_url) {
+            finalGambarURL = `http://localhost:8080${res.bukti_pembayaran_url}`;
+            databaseSuccess = true;
+          }
+        } else {
+          const errorData = await response.json();
+          console.warn("Gagal mengunggah bukti ke database GORM:", errorData.error);
+        }
+      } catch (err) {
+        console.warn("Koneksi API GORM backend offline. Menggunakan mode simulasi lokal.", err.message);
+      }
+    }
+
+    // Perbarui status pesanan di LocalStorage (sebagai cache/demo fallback)
+    const daftarPesanan = JSON.parse(localStorage.getItem('vipizza_orders_mock') || '[]');
+    const indeks = daftarPesanan.findIndex(p => p.id === (pesanan?.id || parseInt(id)));
+
+    const pesananDiperbarui = {
+      ...pesanan,
+      status: "menunggu_validasi",
+      bukti_pembayaran: finalGambarURL,
+      nama_bank: namaBank,
+      nama_pengirim: namaPengirim
+    };
+
+    if (indeks > -1) {
+      daftarPesanan[indeks] = pesananDiperbarui;
+    } else {
+      daftarPesanan.push(pesananDiperbarui);
+    }
+
+    localStorage.setItem('vipizza_orders_mock', JSON.stringify(daftarPesanan));
+    localStorage.setItem('vipizza_active_order_mock', JSON.stringify(pesananDiperbarui));
+    
+    setPesanan(pesananDiperbarui);
+    setProsesUpload(false);
+
+    if (databaseSuccess) {
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: "Bukti pembayaran berhasil diunggah langsung ke database MySQL XAMPP! Status pesanan kini: Menunggu Validasi Admin. 🧾👍" });
+    } else {
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: "Bukti pembayaran berhasil diunggah! (Mode Demo Lokal aktif). Status pesanan kini: Menunggu Validasi Admin. 🧾👍" });
+    }
+  };
+
+  // Handler input gambar
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFileBukti(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBuktiPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -105,255 +334,455 @@ export default function TrackOrder() {
     return <div className="py-20 text-center text-slate-500 font-bold">Memuat Detail Pesanan...</div>;
   }
 
-  if (!pesanan) {
-    return (
-      <div className="page-wrap min-h-screen text-center py-20">
-        <span className="text-5xl block mb-4">🔍</span>
-        <h2 className="font-bold text-xl text-slate-700">Pesanan Tidak Ditemukan</h2>
-        <p className="text-slate-400 text-sm mt-2">Pesanan #{id} tidak dapat ditemukan.</p>
-        <Link to="/" className="btn-primary inline-block mt-6 text-sm px-6 py-3">Kembali ke Beranda</Link>
-      </div>
-    );
-  }
-
-  const statusList = [
-    { key: 'menunggu_pembayaran', label: 'Menunggu Bayar', icon: Hourglass },
-    { key: 'diproses', label: 'Diproses', icon: UtensilsCrossed },
-    { key: 'sedang_diantar', label: 'Sedang Diantar', icon: Truck },
-    { key: 'selesai', label: 'Selesai', icon: CheckCircle2 },
+  // Tahapan stepper progress
+  const statusSistem = [
+    { key: "menunggu_pembayaran", label: "Menunggu Bayar", deskripsi: "Unggah bukti pembayaran", icon: Hourglass },
+    { key: "menunggu_validasi", label: "Validasi Admin", deskripsi: "Pengecekan bukti transfer", icon: FileText },
+    { key: "diproses", label: "Diproses", deskripsi: "Sedang dipanggang dapur", icon: UtensilsCrossed },
+    { key: "dikirim", label: "Dalam Pengantaran", deskripsi: "Kurir mandiri di jalan", icon: Truck },
+    { key: "selesai", label: "Selesai", deskripsi: "Sampai & dinikmati", icon: CheckCircle2 }
   ];
 
-  const idxAktif = statusList.findIndex(s => s.key === pesanan.status);
+  const statusAman = pesanan?.status || 'menunggu_pembayaran';
+  const indeksStatusAktif = statusSistem.findIndex(s => s.key === statusAman);
 
   return (
     <div className="page-wrap min-h-screen text-left">
       <div className="mb-6">
-        <Link to={pesanan.status === 'selesai' || pesanan.status === 'dibatalkan' ? '/riwayat' : '/menu'}
-          className="text-slate-500 hover:text-brand-orange text-xs flex items-center gap-1.5 font-medium">
-          <ChevronLeft className="w-4 h-4" /> Kembali
+        <Link to="/menu" className="text-brand-brown-light font-medium hover:text-brand-orange text-xs flex items-center gap-1.5">
+          <ChevronLeft className="w-4 h-4" /> Kembali ke Menu
         </Link>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <p className="text-brand-orange font-semibold text-xs uppercase tracking-wider">Lacak Pesanan</p>
-          <h1 className="page-title mt-1">Pesanan #{pesanan.id}</h1>
+          <h1 className="page-title mt-1">Pesanan #{pesanan?.id || id}</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase ${pesanan.status === 'dibatalkan' ? 'bg-red-100 text-red-700' :
-              pesanan.status === 'selesai' ? 'bg-emerald-100 text-emerald-700' :
-              pesanan.status === 'sedang_diantar' ? 'bg-purple-100 text-purple-700' :
-              'bg-amber-100 text-amber-700'
-            }`}>
-            {labelStatus(pesanan.status)}
-          </span>
-          <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase ${pesanan.status_pembayaran === 'lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-            }`}>
-            {labelPembayaran(pesanan.status_pembayaran)}
-          </span>
-        </div>
+        <span className="bg-brand-orange-light text-brand-orange font-bold px-4 py-2 rounded-full text-xs uppercase">
+          {statusAman.replace('_', ' ')}
+        </span>
       </div>
 
-      {/* Stepper */}
-      {pesanan.status !== 'dibatalkan' && (
-        <div className="border border-slate-200/50 shadow-md bg-white rounded-2xl p-8 mb-10">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4">
-            {statusList.map((lang, index) => {
-              const IconComp = lang.icon;
-              const isCompleted = index < idxAktif;
-              const isActive = index === idxAktif;
+      {/* STEPPER PROGRESS TRACKING */}
+      <div className="border border-slate-200/50 shadow-md bg-white rounded-2xl p-8 mb-10">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4">
+          {statusSistem.map((lang, index) => {
+            const IconComp = lang.icon;
+            const isCompleted = index < indeksStatusAktif;
+            const isActive = index === indeksStatusAktif;
 
-              return (
-                <div key={lang.key} className="flex flex-col items-center">
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center border-3 transition-all duration-300 ${isCompleted
-                      ? 'bg-pink-500 border-pink-500 text-white shadow-md shadow-pink-100'
-                      : isActive
-                        ? 'bg-white border-pink-500 text-brand-orange ring-4 ring-pink-100'
+            return (
+              <div 
+                key={lang.key} 
+                className={`stepper-item ${
+                  isCompleted ? 'completed text-brand-orange' : isActive ? 'active text-brand-orange' : 'text-slate-400'
+                }`}
+              >
+                <div 
+                  className={`stepper-icon w-12 h-12 rounded-full flex items-center justify-center border-3 transition-all duration-300 ${
+                    isCompleted 
+                      ? 'bg-pink-500 border-pink-500 text-white shadow-md shadow-pink-100' 
+                      : isActive 
+                        ? 'bg-white border-pink-500 text-brand-orange ring-4 ring-pink-100' 
                         : 'bg-slate-100 border-slate-200 text-slate-400'
-                    }`}>
-                    <IconComp className="w-6 h-6" />
-                  </div>
-                  <h4 className={`font-bold text-xs mt-3 ${isCompleted || isActive ? 'text-slate-800' : 'text-slate-400'}`}>
-                    {lang.label}
-                  </h4>
+                  }`}
+                >
+                  <IconComp className="w-5 h-5" />
                 </div>
-              );
-            })}
-          </div>
+                <h4 className="font-bold text-xs mt-3 text-slate-800">{lang.label}</h4>
+                <p className="text-[10px] text-slate-400 mt-1 max-w-[120px] text-center hidden md:block">
+                  {lang.deskripsi}
+                </p>
+              </div>
+            );
+          })}
         </div>
-      )}
 
-      {pesanan.status === 'dibatalkan' && (
-        <div className="p-5 bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-2xl mb-10">
-          ⚠️ Pesanan ini telah Dibatalkan. Silakan hubungi pemilik UMKM untuk informasi lebih lanjut.
-        </div>
-      )}
+        {/* Skenario Khusus Pesanan Dibatalkan */}
+        {pesanan.status === 'dibatalkan' && (
+          <div className="mt-8 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl text-center">
+            ⚠️ Pesanan ini telah Dibatalkan oleh Admin. Silakan hubungi pemilik UMKM untuk informasi lebih lanjut.
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* Kolom Kiri: Intruksi Pembayaran & Upload */}
         <div className="lg:col-span-7 flex flex-col gap-6">
-          {/* Midtrans Payment */}
-          {pesanan.status === 'menunggu_pembayaran' && pesanan.metode_pembayaran === 'midtrans' && (
-            <div className="border border-brand-orange/30 shadow-md bg-brand-orange-light/10 rounded-2xl p-6 text-left">
-              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
-                <CreditCard className="w-5 h-5 text-brand-orange" />
-                Pembayaran Online (Midtrans)
+          
+          {/* Instruksi Transfer & Scan QRIS */}
+          {pesanan.status === 'menunggu_pembayaran' && pesanan.metode_pembayaran !== 'midtrans' && (
+            <div className="border border-pink-200/50 shadow-md bg-white rounded-2xl p-6 text-left">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-1.5 mb-4">
+                <QrCode className="w-5 h-5 text-brand-orange" />
+                Instruksi Transfer Pembayaran
               </h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-5">
-                Silakan klik tombol di bawah untuk melanjutkan pembayaran melalui Midtrans.
-                Kami menerima <b>GoPay, ShopeePay, Virtual Account, QRIS,</b> dan berbagai metode lainnya.
-              </p>
-              {pesanan.snap_token ? (
-                <button
-                  onClick={handleBayarMidtrans}
-                  className="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-95 cursor-pointer text-sm"
-                >
-                  Lanjutkan Pembayaran
-                </button>
+              
+              {pesanan.metode_pembayaran === 'transfer_bank' ? (
+                <div className="flex flex-col gap-4">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Silakan lakukan transfer ke salah satu rekening Bank resmi milik UMKM Vipizza Homemade Padang berikut:
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Rekening BNI */}
+                    <div className="border border-slate-200 rounded-xl p-4 flex flex-col gap-1 relative bg-slate-50">
+                      <span className="font-bold text-xs text-orange-600 block">BANK BNI</span>
+                      <span className="font-extrabold text-slate-800 text-base">0788-210-535</span>
+                      <span className="text-[10px] text-slate-400">a.n. ANNISA NADYA PUTRI</span>
+                      <button 
+                        type="button"
+                        className="absolute top-3 right-3 text-slate-500 hover:text-brand-orange p-1 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"
+                        onClick={() => salinRekening("0788210535")}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Rekening BSI */}
+                    <div className="border border-slate-200 rounded-xl p-4 flex flex-col gap-1 relative bg-slate-50">
+                      <span className="font-bold text-xs text-emerald-600 block">BANK BSI</span>
+                      <span className="font-extrabold text-slate-800 text-base">717-432-7577</span>
+                      <span className="text-[10px] text-slate-400">a.n. ANNISA NADYA PUTRI</span>
+                      <button 
+                        type="button"
+                        className="absolute top-3 right-3 text-slate-500 hover:text-brand-orange p-1 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"
+                        onClick={() => salinRekening("7174327577")}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Rekening BRI */}
+                    <div className="border border-slate-200 rounded-xl p-4 flex flex-col gap-1 relative bg-slate-50">
+                      <span className="font-bold text-xs text-blue-600 block">BANK BRI</span>
+                      <span className="font-extrabold text-slate-800 text-base">0058-01-033074-53-4</span>
+                      <span className="text-[10px] text-slate-400">a.n. ANNISA NADYA PUTRI</span>
+                      <button 
+                        type="button"
+                        className="absolute top-3 right-3 text-slate-500 hover:text-brand-orange p-1 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"
+                        onClick={() => salinRekening("005801033074534")}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <p className="text-xs text-slate-500">Token pembayaran tidak tersedia. Silakan hubungi admin.</p>
+                // Scan QRIS
+                <div className="flex flex-col sm:flex-row gap-6 items-center">
+                  {/* Mock QR Code */}
+                  <div className="w-40 h-40 border-4 border-slate-200 p-2 bg-white rounded-2xl flex items-center justify-center shrink-0 shadow-inner relative z-10">
+                    <div className="w-full h-full bg-slate-100 rounded-xl flex flex-col items-center justify-center text-[10px] text-slate-400 font-bold gap-1">
+                      <span className="text-3xl select-none">🔲</span>
+                      <span>QRIS DUKUNG UMKM</span>
+                      <span className="text-brand-orange text-[8px] uppercase">Vipizza Padang</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2 text-left">
+                    <span className="font-bold text-xs text-slate-700">Scan QRIS UMKM</span>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Arahkan kamera e-wallet Anda (Gopay, OVO, Dana, LinkAja, atau Mobile Banking) ke kode QRIS di samping.
+                    </p>
+                    <span className="text-brand-orange font-extrabold text-xs bg-pink-50 px-3 py-1.5 rounded self-start mt-1 border border-pink-100">
+                      Total tagihan: Rp {pesanan.total_harga.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
-          {/* Tunai Payment */}
-          {pesanan.status === 'diproses' && pesanan.metode_pembayaran === 'tunai' && pesanan.status_pembayaran === 'belum_dibayar' && (
-            <div className="border border-emerald-200 shadow-md bg-emerald-50/50 rounded-2xl p-6 text-left">
-              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-3">
-                <Wallet className="w-5 h-5 text-emerald-600" />
-                Pembayaran Tunai
+          {/* Instruksi Menunggu Pembayaran Midtrans */}
+          {pesanan.status === 'menunggu_pembayaran' && pesanan.metode_pembayaran === 'midtrans' && (
+            <div className="border border-brand-orange/30 shadow-md bg-brand-orange-light/10 rounded-2xl p-6 text-left">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-1.5 mb-3">
+                <Hourglass className="w-5 h-5 text-brand-orange animate-pulse" />
+                Menunggu Pembayaran (Midtrans)
               </h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-2">
-                Pesanan Anda sedang diproses. Silakan siapkan uang tunai sebesar
-                <span className="font-extrabold text-emerald-700 block mt-2 text-lg">
-                  Rp {pesanan.total_harga?.toLocaleString('id-ID') || 0}
-                </span>
+              <p className="text-sm text-slate-600 leading-relaxed mb-4">
+                Pembayaran Anda diproses secara otomatis melalui gerbang pembayaran Midtrans. 
+                Anda bisa membayar menggunakan <b>GoPay, ShopeePay, Virtual Account (BCA/Mandiri/BNI/dll), atau QRIS</b>.
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Pembayaran dilakukan saat pesanan sampai di alamat Anda.
-              </p>
+              
+              {pesanan.snap_token || snapTokenAktif ? (
+                <div className="flex flex-col gap-3 items-start">
+                  <p className="text-xs text-slate-600 font-medium">Klik tombol di bawah ini untuk memunculkan kembali jendela pembayaran:</p>
+                  <div className="flex flex-col gap-3 items-start">
+                    <button 
+                      onClick={handleLanjutkanBayar}
+                      className="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-95 cursor-pointer"
+                    >
+                      Lanjutkan Pembayaran
+                    </button>
+                    
+                    <button
+                      onClick={handleCekStatusPembayaran}
+                      disabled={verifikasiLoading}
+                      className="text-xs text-slate-500 hover:text-brand-orange underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      {verifikasiLoading ? '⏳ Memeriksa status...' : '🔄 Cek status pembayaran'}
+                    </button>
+
+                    {/* Tombol Refresh Token jika expired */}
+                    <button
+                      onClick={handleRefreshToken}
+                      disabled={isRefreshingToken}
+                      className="text-xs text-slate-500 hover:text-brand-orange underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      {isRefreshingToken ? '⏳ Memperbarui token...' : '🔄 Token kadaluarsa? Klik di sini untuk perbarui'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 p-4 bg-white border border-slate-200 rounded-xl">
+                  <p className="text-xs text-slate-500 mb-1">💡 Tips:</p>
+                  <p className="text-xs text-slate-600 font-medium">Pesanan ini disimpan secara lokal dan belum terhubung ke sistem pembayaran Midtrans.</p>
+                  <p className="text-xs text-slate-500">Silakan coba lagi dengan akun yang sudah terdaftar di server:</p>
+                  <Link to="/menu" className="bg-brand-orange hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs text-center transition-all cursor-pointer self-start">
+                    Pesan Ulang dari Menu
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Diproses info */}
+          {/* Form Unggah Bukti Bayar (Hanya untuk Non-Midtrans/Legacy) */}
+          {(pesanan.status === 'menunggu_pembayaran' || pesanan.status === 'menunggu_validasi') && pesanan.metode_pembayaran !== 'midtrans' && (
+            <div className="border border-slate-200/50 shadow-md bg-white rounded-2xl p-6 text-left">
+              <form onSubmit={handleUploadBukti} className="flex flex-col gap-4">
+                <h3 className="font-bold text-slate-800 text-lg flex items-center gap-1.5">
+                  <Upload className="w-5 h-5 text-brand-orange" />
+                  Unggah Bukti Transaksi
+                </h3>
+                
+                {pesanan.status === 'menunggu_validasi' ? (
+                  <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-xl leading-relaxed">
+                    💡 Anda sudah mengunggah bukti pembayaran. Admin sedang memverifikasi transaksi Anda secara manual. Anda dapat memperbarui unggahan jika salah kirim.
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 leading-relaxed -mt-2">
+                    Setelah melakukan transfer atau pemindaian QRIS, silakan screenshot/foto bukti transfer Anda dan unggah di bawah ini agar pesanan bisa diproses oleh Admin.
+                  </p>
+                )}
+
+                {/* Input File */}
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 hover:bg-slate-50 transition-colors duration-200 cursor-pointer relative group">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  />
+                  
+                  {buktiPreview ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-32 h-32 rounded-xl overflow-hidden shadow-md border-2 border-white ring-4 ring-pink-100">
+                        <img src={buktiPreview} alt="Preview Bukti" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-xs font-bold text-brand-orange">Klik / Seret untuk mengganti foto</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-brand-orange">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-sm text-slate-700">Pilih Foto Bukti</span>
+                      <span className="text-[10px] text-slate-400">Format PNG, JPG atau JPEG maks 5MB</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Nama Bank / E-Wallet</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Bank BCA, Mandiri, Gopay, OVO..."
+                      value={namaBank}
+                      onChange={(e) => setNamaBank(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/50"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Nama Pengirim</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Budi Santoso..."
+                      value={namaPengirim}
+                      onChange={(e) => setNamaPengirim(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/50"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={prosesUpload}
+                  className="btn-primary font-extrabold rounded-full py-3 px-6 shadow-lg shadow-pink-200 w-full mt-2 transition-colors cursor-pointer flex items-center justify-center"
+                >
+                  {prosesUpload ? "Mengunggah..." : pesanan.status === 'menunggu_validasi' ? "Perbarui Bukti Pembayaran" : "Kirim Bukti Pembayaran"}
+                </button>
+
+              </form>
+            </div>
+          )}
+
+          {/* Info Tambahan */}
           {pesanan.status === 'diproses' && (
             <div className="border border-emerald-100 shadow-md bg-white rounded-2xl p-6 text-left flex items-start gap-4">
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-                <UtensilsCrossed className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-2xl shrink-0 text-emerald-600 select-none">
+                🔥
               </div>
-              <div>
+              <div className="flex flex-col gap-1.5">
                 <h4 className="font-extrabold text-emerald-800 text-base">Pizza Anda Sedang Dipanggang!</h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Dapur Vipizza Homemade sedang memproses pesanan Anda. Kami akan segera mengantarkannya.
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bukti pembayaran Anda valid! Dapur Vipizza Homemade Padang sedang memanggang adonan pizza Anda dengan suhu optimal. Mohon tunggu, aromanya sangat lezat!
                 </p>
               </div>
             </div>
           )}
 
-          {/* Sedang Diantar info */}
-          {pesanan.status === 'sedang_diantar' && (
-            <div className="border border-purple-100 shadow-md bg-white rounded-2xl p-6 text-left flex items-start gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
-                <Truck className="w-6 h-6 text-purple-600" />
+          {pesanan.status === 'dikirim' && (
+            <div className="border border-pink-100 shadow-md bg-white rounded-2xl p-6 text-left flex items-start gap-4">
+              <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center text-brand-orange shrink-0">
+                <Truck className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="font-extrabold text-purple-800 text-base">Pesanan Sedang Diantar!</h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Pemilik UMKM sedang meluncur ke alamat Anda. Harap aktifkan nomor telepon Anda.
+              <div className="flex flex-col gap-1.5">
+                <h4 className="font-extrabold text-pink-700 text-base">Pesanan Sedang Diantarkan!</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Pemilik UMKM sedang meluncur ke alamat Anda di wilayah Kota Padang menggunakan pengantaran mandiri kami. Harap aktifkan nomor telepon Anda untuk kemudahan koordinasi.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Selesai info */}
           {pesanan.status === 'selesai' && (
-            <div className="border border-emerald-200 shadow-md bg-emerald-50 rounded-2xl p-6 text-left flex items-start gap-4">
+            <div className="border border-emerald-250 shadow-md bg-emerald-500/5 rounded-2xl p-6 text-left flex items-start gap-4">
               <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="font-extrabold text-emerald-800 text-base">Pesanan Selesai!</h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Terima kasih telah memesan di Vipizza! Dukungan Anda sangat berarti bagi UMKM kami.
+              <div className="flex flex-col gap-1.5">
+                <h4 className="font-extrabold text-emerald-800 text-base">Pesanan Selesai Terkirim!</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Terima kasih telah memesan pizza rumahan di Vipizza Homemade Padang. Dukungan Anda sangat berarti bagi kelangsungan UMKM kami! Semoga menikmati pizza hangatnya.
                 </p>
               </div>
             </div>
           )}
 
-          {pesanan.catatan && (
-            <div className="border border-slate-200/50 rounded-2xl p-4 bg-slate-50 text-left">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Catatan Pesanan</span>
-              <p className="text-sm text-slate-700">{pesanan.catatan}</p>
+          {pesanan.status === 'dibatalkan' && (
+            <div className="border border-red-200 shadow-md bg-red-500/5 rounded-2xl p-6 text-left flex items-start gap-4">
+              <div className="w-12 h-12 bg-red-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+                <X className="w-6 h-6" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <h4 className="font-extrabold text-red-800 text-base">Pesanan Dibatalkan / Ditolak</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Mohon maaf, bukti pembayaran atau transaksi pesanan Anda telah ditolak atau dibatalkan oleh Admin.
+                </p>
+                {pesanan.catatan_penolakan && (
+                  <div className="mt-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-750">
+                    <span className="font-extrabold block text-red-800 mb-0.5">Alasan Penolakan:</span>
+                    <span>{pesanan.catatan_penolakan}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
+
         </div>
 
-        {/* Right Column */}
+        {/* Kolom Kanan: Rincian Belanja & Pengiriman */}
         <div className="lg:col-span-5 flex flex-col gap-6">
+          
+          {/* Ringkasan Belanja */}
           <div className="border border-slate-200/50 shadow-md bg-white rounded-2xl p-6 text-left">
-            <h3 className="font-bold text-slate-800 text-lg mb-4">Detail Menu</h3>
+            <h3 className="font-bold text-slate-800 text-lg mb-4">Detail Menu Dipesan</h3>
+            
             <div className="flex flex-col gap-3">
-              {(pesanan.items || []).map((item, idx) => (
+              {(pesanan?.items || []).map((item, idx) => (
                 <div key={idx} className="flex justify-between items-start text-sm">
-                  <div>
-                    <span className="font-bold text-slate-800 text-sm block">{item.menu_nama}</span>
-                    <span className="text-xs text-slate-400">{item.jumlah} x Rp {(item.harga || 0).toLocaleString('id-ID')}</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-800 text-sm">{item.menu_nama || 'Pizza'}</span>
+                    <span className="text-xs text-slate-400 mt-0.5">{(item.jumlah || 1)} porsi x Rp {(item.harga || 0).toLocaleString('id-ID')}</span>
+                    {item.catatan && (
+                      <span className="text-[10px] text-pink-650 bg-pink-50 border border-pink-100 rounded px-1.5 py-0.5 self-start mt-1 font-medium">
+                        ✏️ Catatan: {item.catatan}
+                      </span>
+                    )}
                   </div>
-                  <span className="font-bold text-slate-700">Rp {((item.jumlah || 1) * (item.harga || 0)).toLocaleString('id-ID')}</span>
+                  <span className="font-bold text-slate-700 text-sm">
+                    Rp {((item.jumlah || 1) * (item.harga || 0)).toLocaleString('id-ID')}
+                  </span>
                 </div>
               ))}
             </div>
+
             <div className="h-px bg-slate-100 my-4" />
-            <div className="flex flex-col gap-2 text-xs text-slate-500">
+
+            <div className="flex flex-col gap-2.5 text-xs text-slate-500">
               <div className="flex justify-between">
                 <span>Metode Bayar</span>
                 <span className="font-semibold text-slate-700 uppercase">
-                  {pesanan.metode_pembayaran === 'midtrans' ? 'Midtrans' : 'Tunai'}
+                  {(pesanan?.metode_pembayaran || 'transfer_bank').replace('_', ' ')}
                 </span>
               </div>
+              {pesanan?.nama_bank && (
+                <div className="flex justify-between">
+                  <span>Nama Bank/E-Wallet</span>
+                  <span className="font-semibold text-slate-700">{pesanan.nama_bank}</span>
+                </div>
+              )}
+              {pesanan?.nama_pengirim && (
+                <div className="flex justify-between">
+                  <span>Nama Pengirim</span>
+                  <span className="font-semibold text-slate-700">{pesanan.nama_pengirim}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Status Bayar</span>
-                <span className={`font-semibold ${pesanan.status_pembayaran === 'lunas' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {labelPembayaran(pesanan.status_pembayaran)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tanggal</span>
+                <span>Tanggal Transaksi</span>
                 <span className="font-semibold text-slate-700">
-                  {new Date(pesanan.tanggal_pesanan || new Date()).toLocaleDateString('id-ID', {
-                    day: '2-digit', month: 'long', year: 'numeric',
-                  })}
-                </span>
+                  {new Date(pesanan?.tanggal_pesanan || new Date()).toLocaleDateString('id-ID', {
+                    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })} WIB
+                  </span>
               </div>
-              <div className="flex justify-between items-end mt-3 pt-3 border-t border-slate-100">
-                <span className="font-bold text-slate-800">Total Bayar</span>
+              <div className="flex justify-between items-end mt-4 pt-2 border-t border-slate-50">
+                <span className="font-bold text-slate-800 text-xs">Total Bayar (Termasuk Ongkir)</span>
                 <span className="font-extrabold text-lg text-brand-orange">
-                  Rp {(pesanan.total_harga || 0).toLocaleString('id-ID')}
+                  Rp {(pesanan?.total_harga || 0).toLocaleString('id-ID')}
                 </span>
               </div>
             </div>
           </div>
 
+          {/* Alamat Pengiriman */}
           <div className="border border-slate-200/50 shadow-md bg-white rounded-2xl p-6 text-left">
             <h3 className="font-bold text-slate-800 text-lg mb-3">Alamat Pengiriman</h3>
+            
             <div className="text-xs text-slate-600 flex flex-col gap-2 leading-relaxed">
               <div>
-                <span className="block font-bold text-slate-700">Nama Penerima</span>
-                <span>{pesanan.nama_penerima || '-'}</span>
-              </div>
-              <div>
-                <span className="block font-bold text-slate-700">Telepon</span>
+                <span className="block font-bold text-slate-700">No. Telepon / WhatsApp:</span>
                 <span>{pesanan.telepon}</span>
               </div>
-              <div>
-                <span className="block font-bold text-slate-700 mt-2">Lokasi Tujuan</span>
-                <span className="block mt-1 text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div className="mt-1">
+                <span className="block font-bold text-slate-700">Lokasi Tujuan:</span>
+                <span className="block mt-1 text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-150">
                   {pesanan.alamat_pengiriman}
                 </span>
               </div>
             </div>
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 }

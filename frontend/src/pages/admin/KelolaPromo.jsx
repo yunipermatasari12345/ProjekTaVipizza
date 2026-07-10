@@ -1,306 +1,342 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Save, Tag } from 'lucide-react';
+import { Plus, X, Upload, Trash2, Image as ImageIcon, Edit } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import Swal from 'sweetalert2';
 
 export default function KelolaPromo() {
   const { token } = useAuth();
   const [promos, setPromos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [formBuka, setFormBuka] = useState(false);
   const [promoTerpilih, setPromoTerpilih] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Form state
-  const [judul, setJudul] = useState('');
-  const [deskripsi, setDeskripsi] = useState('');
-  const [diskon, setDiskon] = useState('');
-  const [kodePromo, setKodePromo] = useState('');
-  const [tanggalMulai, setTanggalMulai] = useState('');
-  const [tanggalAkhir, setTanggalAkhir] = useState('');
-  const [aktif, setAktif] = useState(true);
-  const [fileObj, setFileObj] = useState(null);
-  const [previewBanner, setPreviewBanner] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [formData, setFormData] = useState({
+    judul: '', deskripsi: '', kode_promo: '', diskon: '',
+    tanggal_mulai: '', tanggal_selesai: '', aktif: true
+  });
 
   useEffect(() => { muatPromo(); }, []);
 
-  const muatPromo = () => {
-    fetch('http://localhost:8080/api/promo/admin', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(data => { if (Array.isArray(data)) setPromos(data); })
-      .catch(() => alert('Gagal memuat promo. Pastikan backend berjalan.'));
+  const muatPromo = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/api/promo/admin', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPromos(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.warn('Gagal muat promo:', err);
+    }
+    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setPromoTerpilih(null);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setFormData({
+      judul: '', deskripsi: '', kode_promo: '', diskon: '',
+      tanggal_mulai: '', tanggal_selesai: '', aktif: true
+    });
   };
 
   const handleBukaTambah = () => {
-    setPromoTerpilih(null);
-    setJudul(''); setDeskripsi(''); setDiskon(''); setKodePromo('');
-    setTanggalMulai(''); setTanggalAkhir(''); setAktif(true);
-    setFileObj(null); setPreviewBanner('');
+    resetForm();
     setFormBuka(true);
   };
 
-  const handleBukaEdit = (promo) => {
-    setPromoTerpilih(promo);
-    setJudul(promo.judul);
-    setDeskripsi(promo.deskripsi || '');
-    setDiskon(promo.diskon?.toString() || '0');
-    setKodePromo(promo.kode_promo || '');
-    setTanggalMulai(promo.tanggal_mulai?.split('T')[0] || '');
-    setTanggalAkhir(promo.tanggal_akhir?.split('T')[0] || '');
-    setAktif(promo.aktif);
-    setFileObj(null);
-    setPreviewBanner(promo.banner_url ? `http://localhost:8080${promo.banner_url}` : '');
+  const handleBukaEdit = (p) => {
+    setPromoTerpilih(p);
+    setSelectedFile(null);
+    setPreviewUrl(p.banner_url ? `http://localhost:8080${p.banner_url}` : null);
+    setFormData({
+      judul: p.judul, deskripsi: p.deskripsi, kode_promo: p.kode_promo,
+      diskon: p.diskon.toString(),
+      tanggal_mulai: p.tanggal_mulai ? p.tanggal_mulai.split('T')[0] : '',
+      tanggal_selesai: p.tanggal_akhir ? p.tanggal_akhir.split('T')[0] : '',
+      aktif: p.aktif
+    });
     setFormBuka(true);
   };
 
-  const handleSimpan = async (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleHapusBanner = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
+
+  const handleSimpanPromo = async (e) => {
     e.preventDefault();
-    if (!judul || !tanggalAkhir) { alert('Judul dan Tanggal Akhir wajib diisi!'); return; }
-    setLoading(true);
 
-    const formData = new FormData();
-    formData.append('judul', judul);
-    formData.append('deskripsi', deskripsi);
-    formData.append('diskon', diskon || '0');
-    formData.append('kode_promo', kodePromo);
-    formData.append('tanggal_mulai', tanggalMulai || new Date().toISOString().split('T')[0]);
-    formData.append('tanggal_akhir', tanggalAkhir);
-    formData.append('aktif', aktif ? 'true' : 'false');
-    if (fileObj) formData.append('banner', fileObj);
+    const fd = new FormData();
+    fd.append('judul', formData.judul);
+    fd.append('deskripsi', formData.deskripsi);
+    fd.append('kode_promo', formData.kode_promo);
+    fd.append('diskon', formData.diskon);
+    fd.append('tanggal_mulai', formData.tanggal_mulai);
+    fd.append('tanggal_akhir', formData.tanggal_selesai);
+    fd.append('aktif', formData.aktif ? 'true' : 'false');
+    if (selectedFile) fd.append('banner', selectedFile);
 
-    const url = promoTerpilih
-      ? `http://localhost:8080/api/promo/${promoTerpilih.id}`
-      : 'http://localhost:8080/api/promo';
-    const method = promoTerpilih ? 'PUT' : 'POST';
+    const apiURL = promoTerpilih ? `http://localhost:8080/api/promo/${promoTerpilih.id}` : 'http://localhost:8080/api/promo';
+    const apiMethod = promoTerpilih ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      const res = await fetch(apiURL, {
+        method: apiMethod,
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: fd,
       });
-      if (!res.ok) throw new Error(await res.text());
-      alert(promoTerpilih ? 'Promo berhasil diperbarui!' : 'Promo berhasil ditambahkan!');
-      muatPromo();
+      if (!res.ok) throw new Error('Gagal menyimpan promo');
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Promo berhasil disimpan!', timer: 1500, showConfirmButton: false });
       setFormBuka(false);
+      muatPromo();
     } catch (err) {
-      alert('Gagal menyimpan promo: ' + err.message);
-    } finally {
-      setLoading(false);
+      Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
     }
   };
 
-  const handleHapus = (id) => {
-    if (!window.confirm('Hapus promo ini secara permanen?')) return;
-    fetch(`http://localhost:8080/api/promo/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(() => { alert('Promo berhasil dihapus!'); muatPromo(); })
-      .catch(() => alert('Gagal menghapus promo.'));
+  const handleHapusPromo = async (id) => {
+    Swal.fire({
+      title: 'Yakin ingin menghapus?',
+      text: 'Promo ini akan dihapus permanen!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch(`http://localhost:8080/api/promo/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error('Gagal menghapus promo');
+          Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Promo telah berhasil dihapus.', timer: 1500, showConfirmButton: false });
+          muatPromo();
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+        }
+      }
+    });
   };
 
-  const formatTanggal = (tgl) => {
-    if (!tgl) return '-';
-    return new Date(tgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  const formatTgl = (tglStr) => {
+    if (!tglStr) return '-';
+    const d = new Date(tglStr);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  if (formBuka) {
-    return (
-      <div className="max-w-2xl mx-auto text-left">
-        <div className="card-bs">
-          <div className="px-6 py-4 border-b border-[#dee2e6]">
-            <h2 className="text-[#212529] text-lg font-bold">
-              {promoTerpilih ? 'Edit Promo' : 'Tambah Promo Baru'}
-            </h2>
-          </div>
-          <div className="p-6">
-            <form onSubmit={handleSimpan} className="flex flex-col gap-4">
+  // Cek apakah promo sudah kadaluarsa (tanggal_akhir < hari ini)
+  const isKadaluarsa = (tglAkhirStr) => {
+    if (!tglAkhirStr) return false;
+    const akhir = new Date(tglAkhirStr);
+    const hariIni = new Date();
+    hariIni.setHours(0, 0, 0, 0);
+    akhir.setHours(0, 0, 0, 0);
+    return akhir < hariIni;
+  };
 
-              <div>
-                <label className="text-sm font-medium text-[#212529] block mb-1">Judul Promo *</label>
-                <input type="text" value={judul} onChange={e => setJudul(e.target.value)}
-                  placeholder="Contoh: Promo Akhir Tahun - Diskon 20%"
-                  className="input-bs" required />
-              </div>
+  // Cek apakah promo belum dimulai
+  const isBelumMulai = (tglMulaiStr) => {
+    if (!tglMulaiStr) return false;
+    const mulai = new Date(tglMulaiStr);
+    const hariIni = new Date();
+    hariIni.setHours(0, 0, 0, 0);
+    mulai.setHours(0, 0, 0, 0);
+    return mulai > hariIni;
+  };
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-[#212529] block mb-1">Diskon (%)</label>
-                  <input type="number" min="0" max="100" value={diskon}
-                    onChange={e => setDiskon(e.target.value)} placeholder="0"
-                    className="input-bs" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#212529] block mb-1">Kode Promo</label>
-                  <input type="text" value={kodePromo} onChange={e => setKodePromo(e.target.value)}
-                    placeholder="Contoh: PIZZA20"
-                    className="input-bs uppercase" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-[#212529] block mb-1">Tanggal Mulai</label>
-                  <input type="date" value={tanggalMulai} onChange={e => setTanggalMulai(e.target.value)}
-                    className="input-bs" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#212529] block mb-1">Tanggal Akhir *</label>
-                  <input type="date" value={tanggalAkhir} onChange={e => setTanggalAkhir(e.target.value)}
-                    className="input-bs" required />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#212529] block mb-1">Deskripsi Promo</label>
-                <textarea value={deskripsi} onChange={e => setDeskripsi(e.target.value)}
-                  rows={3} placeholder="Syarat dan ketentuan promo..."
-                  className="input-bs resize-none" />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-[#212529] block mb-1">Banner Promo (Gambar)</label>
-                <input type="file" accept="image/*"
-                  onChange={e => {
-                    const f = e.target.files[0];
-                    if (f) {
-                      setFileObj(f);
-                      const reader = new FileReader();
-                      reader.onloadend = () => setPreviewBanner(reader.result);
-                      reader.readAsDataURL(f);
-                    }
-                  }}
-                  className="input-bs" />
-                {previewBanner && (
-                  <img src={previewBanner} alt="Preview Banner"
-                    className="mt-2 rounded h-24 object-cover border border-[#dee2e6]" />
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <input type="checkbox" id="aktifChk" checked={aktif} onChange={e => setAktif(e.target.checked)}
-                  className="w-4 h-4 accent-[#0b5345]" />
-                <label htmlFor="aktifChk" className="text-sm font-medium text-[#212529]">
-                  Promo Aktif (tampil di halaman publik)
-                </label>
-              </div>
-
-              <div className="flex gap-3 justify-end pt-2">
-                <button type="button" onClick={() => setFormBuka(false)} className="btn-secondary text-sm">
-                  Kembali
-                </button>
-                <button type="submit" disabled={loading} className="btn-blue text-sm flex items-center gap-2">
-                  <Save className="w-4 h-4" />
-                  {loading ? 'Menyimpan...' : 'Simpan Promo'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getStatusLabel = (p) => {
+    if (isKadaluarsa(p.tanggal_akhir)) return { label: 'Kadaluarsa', cls: 'bg-red-100 text-red-700' };
+    if (!p.aktif)                      return { label: 'Nonaktif',   cls: 'bg-gray-100 text-gray-600' };
+    if (isBelumMulai(p.tanggal_mulai)) return { label: 'Belum Mulai', cls: 'bg-yellow-100 text-yellow-700' };
+    return { label: 'Aktif', cls: 'bg-green-100 text-green-700' };
+  };
 
   return (
-    <div className="text-left">
-      <div className="flex justify-between items-center mb-5">
-        <div>
-          <p className="text-[#0b5345] font-semibold text-xs uppercase tracking-wider">Kelola Data</p>
-          <h2 className="page-title mt-1">Data Promo</h2>
-        </div>
-        <button className="btn-primary text-sm py-2 px-4 flex items-center gap-2" onClick={handleBukaTambah}>
-          <Plus className="w-4 h-4" /> Tambah Promo
-        </button>
-      </div>
+    <div className="p-6">
+      {formBuka ? (
+        <div className="bg-white border border-gray-300 rounded max-w-2xl mx-auto shadow-sm">
+          <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+            <h2 className="font-bold text-gray-800 uppercase">{promoTerpilih ? 'Edit Promo' : 'Tambah Promo'}</h2>
+            <button onClick={() => setFormBuka(false)} className="text-gray-500 hover:text-gray-700">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <form onSubmit={handleSimpanPromo} className="p-4 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Judul Promo</label>
+              <input type="text" value={formData.judul} onChange={e => setFormData({...formData, judul: e.target.value})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]" required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Deskripsi</label>
+              <textarea value={formData.deskripsi} onChange={e => setFormData({...formData, deskripsi: e.target.value})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345] resize-none" rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Kode Promo</label>
+                <input type="text" value={formData.kode_promo} onChange={e => setFormData({...formData, kode_promo: e.target.value.toUpperCase()})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]" required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Diskon (%)</label>
+                <input type="number" value={formData.diskon} onChange={e => setFormData({...formData, diskon: e.target.value})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]" required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Tanggal Mulai</label>
+                <input type="date" value={formData.tanggal_mulai} onChange={e => setFormData({...formData, tanggal_mulai: e.target.value})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]" required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Tanggal Selesai</label>
+                <input type="date" value={formData.tanggal_selesai} onChange={e => setFormData({...formData, tanggal_selesai: e.target.value})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]" required />
+              </div>
+            </div>
 
-      {promos.length === 0 ? (
-        <div className="card-bs text-center py-16">
-          <Tag className="w-10 h-10 text-[#adb5bd] mx-auto mb-3" />
-          <p className="text-[#6c757d] text-sm font-medium">Belum ada promo.</p>
-          <p className="text-[#adb5bd] text-xs mt-1">Klik "Tambah Promo" untuk membuat promo pertama.</p>
+            {/* Banner Upload */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Banner Promo</label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  Pilih Gambar
+                  <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                </label>
+                {previewUrl && (
+                  <button type="button" onClick={handleHapusBanner} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
+                    <Trash2 className="w-4 h-4" /> Hapus
+                  </button>
+                )}
+              </div>
+              {previewUrl && (
+                <div className="mt-3 relative w-full max-w-sm rounded overflow-hidden border border-gray-200">
+                  <img src={previewUrl} alt="Preview banner" className="w-full h-32 object-cover" />
+                </div>
+              )}
+              {!previewUrl && (
+                <div className="mt-3 w-full max-w-sm h-32 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 text-sm">
+                  <ImageIcon className="w-6 h-6 mr-2" /> Belum ada gambar
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Status Aktif</label>
+              <select value={formData.aktif ? 'true' : 'false'} onChange={e => setFormData({...formData, aktif: e.target.value === 'true'})} className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#0b5345]">
+                <option value="true">Aktif</option>
+                <option value="false">Nonaktif</option>
+              </select>
+            </div>
+            <div className="pt-4 border-t border-gray-200 flex justify-end gap-2">
+              <button type="button" onClick={() => setFormBuka(false)} className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-600 font-semibold hover:bg-gray-50">Batal</button>
+              <button type="submit" className="px-4 py-2 bg-gray-800 text-white rounded text-sm font-semibold hover:bg-gray-700">Simpan</button>
+            </div>
+          </form>
         </div>
       ) : (
-        <div className="card-bs overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="table-bs">
-              <thead>
-                <tr>
-                  <th>Promo</th>
-                  <th>Diskon</th>
-                  <th>Kode</th>
-                  <th>Berlaku</th>
-                  <th>Status</th>
-                  <th className="text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {promos.map(promo => (
-                  <tr key={promo.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        {promo.banner_url ? (
-                          <div className="w-12 h-12 rounded overflow-hidden border border-[#dee2e6] shrink-0">
-                            <img src={`http://localhost:8080${promo.banner_url}`} alt={promo.judul}
-                              className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-[#e8f5f2] flex items-center justify-center shrink-0">
-                            <Tag className="w-5 h-5 text-[#0b5345]" />
-                          </div>
-                        )}
-                        <div>
-                          <span className="font-semibold text-[#212529] text-sm block">{promo.judul}</span>
-                          <span className="text-[11px] text-[#6c757d] line-clamp-1">{promo.deskripsi}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      {promo.diskon > 0 ? (
-                        <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded">
-                          {promo.diskon}%
-                        </span>
-                      ) : <span className="text-[#6c757d] text-xs">-</span>}
-                    </td>
-                    <td>
-                      {promo.kode_promo ? (
-                        <code className="bg-[#f8f9fa] border border-[#dee2e6] text-[#0b5345] text-xs px-2 py-1 rounded font-mono font-bold">
-                          {promo.kode_promo}
-                        </code>
-                      ) : <span className="text-[#6c757d] text-xs">-</span>}
-                    </td>
-                    <td className="text-xs text-[#6c757d]">
-                      <span>{formatTanggal(promo.tanggal_mulai)}</span>
-                      <br />
-                      <span className="text-[#0b5345] font-medium">s/d {formatTanggal(promo.tanggal_akhir)}</span>
-                    </td>
-                    <td>
-                      {promo.aktif ? (
-                        <span className="bg-emerald-100 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded">Aktif</span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-2 py-0.5 rounded">Nonaktif</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex justify-center gap-2">
-                        <button className="btn-blue text-xs py-1 px-2.5 flex items-center gap-1"
-                          onClick={() => handleBukaEdit(promo)}>
-                          <Edit3 className="w-3.5 h-3.5" /> Edit
-                        </button>
-                        <button
-                          className="bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2.5 rounded flex items-center gap-1"
-                          onClick={() => handleHapus(promo.id)}>
-                          <Trash2 className="w-3.5 h-3.5" /> Hapus
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-lg font-bold text-gray-800 uppercase">Kelola Promo</h1>
           </div>
-        </div>
+
+          <div className="bg-white border border-gray-300 rounded overflow-hidden">
+            <div className="p-4 border-b border-gray-300 bg-gray-50 flex justify-end items-center">
+              <button onClick={handleBukaTambah} className="inline-flex items-center gap-1 border border-gray-800 text-gray-800 bg-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-800 hover:text-white transition-colors">
+                <Plus className="w-4 h-4" /> Tambah Promo
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white border-b border-gray-300">
+                  <tr>
+                    <th className="py-3 px-4 font-semibold text-gray-700 w-12 text-center">No</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Kode Promo</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center w-24">Banner</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center">Diskon</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center">Tanggal Mulai</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center">Tanggal Akhir</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center">Status</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr><td colSpan="8" className="text-center py-4 text-gray-500">Memuat data...</td></tr>
+                  ) : promos.length === 0 ? (
+                    <tr><td colSpan="8" className="text-center py-4 text-gray-500">Promo tidak ditemukan.</td></tr>
+                  ) : (
+                    promos.map((p, index) => {
+                      const kadaluarsa = isKadaluarsa(p.tanggal_akhir);
+                      const status = getStatusLabel(p);
+                      return (
+                      <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${kadaluarsa ? 'opacity-60 bg-red-50/30' : ''}`}>
+                        <td className="py-3 px-4 text-center text-gray-500">{index + 1}</td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <span className={`font-bold text-sm tracking-wider ${kadaluarsa ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                              {p.kode_promo}
+                            </span>
+                            <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{p.judul}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {p.banner_url ? (
+                            <img src={`http://localhost:8080${p.banner_url}`} alt={p.judul} className="w-16 h-10 object-cover rounded border border-gray-200 mx-auto" />
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-center font-semibold text-orange-600">{p.diskon}%</td>
+                        <td className="py-3 px-4 text-center text-sm text-gray-600">{formatTgl(p.tanggal_mulai)}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`text-sm font-medium ${kadaluarsa ? 'text-red-500 font-bold' : 'text-gray-600'}`}>
+                            {formatTgl(p.tanggal_akhir)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${status.cls}`}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button 
+                              onClick={() => handleBukaEdit(p)} 
+                              className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded text-xs font-semibold transition-colors shadow-sm"
+                            >
+                              <Edit className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button 
+                              onClick={() => handleHapusPromo(p.id)} 
+                              className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded text-xs font-semibold transition-colors shadow-sm"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Hapus
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

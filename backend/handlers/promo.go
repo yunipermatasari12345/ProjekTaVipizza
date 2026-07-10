@@ -13,15 +13,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AmbilSemuaPromo mengambil semua promo aktif (publik, tidak perlu login)
+// AmbilSemuaPromo mengambil semua promo aktif yang masih berlaku (publik)
 func AmbilSemuaPromo(c *gin.Context) {
-	var promos []models.Promo
+	promos := []models.Promo{}
 
-	query := config.DB.Where("aktif = ?", true).Where("tanggal_akhir >= ?", time.Now())
-	if err := query.Order("id desc").Find(&promos).Error; err != nil {
+	wib := time.FixedZone("WIB", 7*60*60)
+	now := time.Now().In(wib)
+	hariIni := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, wib)
+
+	query := config.DB.Where("aktif = ?", true)
+	var allActivePromos []models.Promo
+	if err := query.Order("id desc").Find(&allActivePromos).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data promo"})
 		return
 	}
+
+	// Filter di Go untuk menghindari masalah zona waktu DB
+	for _, p := range allActivePromos {
+		// Asumsi tanggal di DB disimpan dengan jam 00:00.
+		// Kita anggap valid jika hari ini >= tanggal_mulai (diabaikan jamnya) dan hari ini <= tanggal_akhir
+		pMulai := time.Date(p.TanggalMulai.Year(), p.TanggalMulai.Month(), p.TanggalMulai.Day(), 0, 0, 0, 0, wib)
+		pAkhir := time.Date(p.TanggalAkhir.Year(), p.TanggalAkhir.Month(), p.TanggalAkhir.Day(), 23, 59, 59, 0, wib)
+		
+		if (hariIni.Equal(pMulai) || hariIni.After(pMulai)) && (now.Before(pAkhir) || now.Equal(pAkhir)) {
+			promos = append(promos, p)
+		}
+	}
+
 	c.JSON(http.StatusOK, promos)
 }
 
@@ -53,8 +71,8 @@ func TambahPromo(c *gin.Context) {
 	diskon, _ := strconv.Atoi(diskonStr)
 	aktif := aktifStr != "false"
 
-	tanggalMulai := time.Now()
-	tanggalAkhir := time.Now().AddDate(0, 1, 0) // default 1 bulan
+	tanggalMulai := time.Now().UTC()
+	tanggalAkhir := time.Now().UTC().AddDate(0, 1, 0) // default 1 bulan
 	if tanggalMulaiStr != "" {
 		if t, err := time.Parse("2006-01-02", tanggalMulaiStr); err == nil {
 			tanggalMulai = t
@@ -200,13 +218,20 @@ func CekKodePromo(c *gin.Context) {
 		return
 	}
 
-	if time.Now().Before(promo.TanggalMulai) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Promo belum dimulai"})
+	wib := time.FixedZone("WIB", 7*60*60)
+	now := time.Now().In(wib)
+	hariIni := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, wib)
+	
+	pMulai := time.Date(promo.TanggalMulai.Year(), promo.TanggalMulai.Month(), promo.TanggalMulai.Day(), 0, 0, 0, 0, wib)
+	pAkhir := time.Date(promo.TanggalAkhir.Year(), promo.TanggalAkhir.Month(), promo.TanggalAkhir.Day(), 23, 59, 59, 0, wib)
+
+	if now.After(pAkhir) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Promo sudah kadaluarsa"})
 		return
 	}
 
-	if time.Now().After(promo.TanggalAkhir) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Promo sudah kadaluarsa"})
+	if hariIni.Before(pMulai) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Promo belum dimulai"})
 		return
 	}
 

@@ -5,11 +5,11 @@
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
 
-  /* Palet Bootstrap ala TA kating (El Bakkah Travel) */
-  --color-primary: #0b5345;
-  --color-primary-light: #0d6e5f;
-  --color-primary-hover: #094a40;
-  --color-primary-pale: #e8f5f2;
+  /* Palet Brand ViPizza — Orange & Red */
+  --color-primary: #ea580c;
+  --color-primary-light: #f97316;
+  --color-primary-hover: #c2410c;
+  --color-primary-pale: #fff7ed;
   --color-bootstrap-blue: #0d6efd;
   --color-bootstrap-blue-hover: #0b5ed7;
   --color-page-bg: #f8f9fa;
@@ -19,10 +19,10 @@
   --color-text-muted: #6c757d;
   --color-border: #dee2e6;
 
-  /* Alias lama agar class Tailwind tetap jalan */
-  --color-brand-orange: #0b5345;
-  --color-brand-orange-dark: #094a40;
-  --color-brand-orange-light: #e8f5f2;
+  /* Alias brand orange */
+  --color-brand-orange: #ea580c;
+  --color-brand-orange-dark: #c2410c;
+  --color-brand-orange-light: #fff7ed;
   --color-brand-cream: #f8f9fa;
   --color-brand-cream-dark: #e9ecef;
   --color-brand-brown: #212529;
@@ -140,8 +140,9 @@ body {
   display: block;
   width: 3rem;
   height: 3px;
-  background-color: var(--color-primary);
+  background: linear-gradient(90deg, #ea580c, #f97316);
   margin: 0.5rem auto 0;
+  border-radius: 9999px;
 }
 
 /* Tabel Bootstrap admin */
@@ -250,7 +251,7 @@ body {
 }
 .admin-sidebar__brand-logo {
   width: 34px; height: 34px;
-  background: linear-gradient(135deg, #0b5345 0%, #1a7a5e 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
@@ -309,11 +310,11 @@ body {
   color: rgba(255,255,255,0.9);
 }
 .admin-sidebar__link--active {
-  background: #0b5345;
+  background: #ea580c;
   color: #ffffff !important;
   font-weight: 600;
 }
-.admin-sidebar__link--active:hover { background: #0d6255; }
+.admin-sidebar__link--active:hover { background: #c2410c; }
 .admin-sidebar__link-icon { width: 16px; height: 16px; flex-shrink: 0; }
 .admin-sidebar__link-text { flex: 1; }
 
@@ -335,7 +336,7 @@ body {
 }
 .admin-sidebar__user-avatar {
   width: 30px; height: 30px;
-  background: #0b5345;
+  background: #ea580c;
   border-radius: 50%;
   color: white;
   font-weight: 700;
@@ -457,7 +458,7 @@ body {
 }
 .admin-topbar__user-avatar {
   width: 30px; height: 30px;
-  background: #0b5345;
+  background: #ea580c;
   border-radius: 50%;
   color: white;
   font-weight: 700;
@@ -472,7 +473,7 @@ body {
 }
 .admin-topbar__user-role {
   font-size: 0.62rem;
-  color: #0b5345;
+  color: #ea580c;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -628,7 +629,7 @@ body {
   width: 220px;
   transition: border-color 0.15s;
 }
-.admin-search-input:focus { border-color: #0b5345; background: #fff; }
+.admin-search-input:focus { border-color: #ea580c; background: #fff; }
 
 .admin-select {
   padding: 7px 12px;
@@ -640,7 +641,7 @@ body {
   outline: none;
   cursor: pointer;
 }
-.admin-select:focus { border-color: #0b5345; }
+.admin-select:focus { border-color: #ea580c; }
 
 /* Table */
 .admin-table-wrap { overflow-x: auto; }
@@ -683,7 +684,7 @@ body {
   font-size: 0.78rem;
 }
 .admin-table__date { color: #6b7280; font-size: 0.78rem; white-space: nowrap; }
-.admin-table__price { font-weight: 600; color: #0b5345; white-space: nowrap; }
+.admin-table__price { font-weight: 600; color: #ea580c; white-space: nowrap; }
 .admin-table__actions {
   display: flex;
   gap: 5px;
@@ -735,7 +736,7 @@ body {
 .admin-btn-primary {
   display: flex; align-items: center; gap: 6px;
   padding: 9px 16px;
-  background: #0b5345;
+  background: #ea580c;
   color: white;
   border: none;
   border-radius: 8px;
@@ -745,23 +746,8 @@ body {
   transition: background 0.15s;
   justify-content: center;
 }
-.admin-btn-primary:hover { background: #094a40; }
+.admin-btn-primary:hover { background: #c2410c; }
 .admin-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.admin-btn-success {
-  display: flex; align-items: center; gap: 6px;
-  padding: 9px 16px;
-  background: #16a34a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  justify-content: center;
-}
-.admin-btn-success:hover { background: #15803d; }
 
 .admin-btn-danger {
   display: flex; align-items: center; gap: 6px;

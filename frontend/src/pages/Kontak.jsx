@@ -1,22 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHero from '../components/layout/PageHero';
-import { MapPin, Phone, Mail, Send } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { MapPin, Phone, Mail, Send, MessageSquare, CheckCircle2, Clock } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Kontak() {
-  const [nama, setNama] = useState('');
-  const [email, setEmail] = useState('');
+  const { user, token } = useAuth();
+  const [nama, setNama]           = useState(user?.nama || '');
+  const [email, setEmail]         = useState(user?.email || '');
   const [pertanyaan, setPertanyaan] = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [riwayatPesan, setRiwayatPesan] = useState([]);
 
-  const handleSubmit = (e) => {
+  // Ambil riwayat pesan dari backend atau localStorage
+  useEffect(() => {
+    // Update field jika user login
+    if (user) {
+      setNama(user.nama || '');
+      setEmail(user.email || '');
+    }
+    muatRiwayat();
+  }, [user]);
+
+  const muatRiwayat = () => {
+    // Coba ambil dari backend dulu
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    fetch('http://localhost:8080/api/pesan-pelanggan', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          // Filter hanya pesan dari pengguna ini (berdasarkan email)
+          const milikSaya = data.filter(p => p.email === (user?.email || email));
+          setRiwayatPesan(milikSaya);
+        } else {
+          // Fallback localStorage
+          const local = JSON.parse(localStorage.getItem('vipizza_pesan_kontak') || '[]');
+          const milikSaya = local.filter(p => p.email === (user?.email || email));
+          setRiwayatPesan(milikSaya);
+        }
+      })
+      .catch(() => {
+        const local = JSON.parse(localStorage.getItem('vipizza_pesan_kontak') || '[]');
+        const milikSaya = local.filter(p => p.email === (user?.email || email));
+        setRiwayatPesan(milikSaya);
+      });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nama || !email || !pertanyaan) {
-      alert('Mohon isi seluruh field!');
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon isi semua field!' });
       return;
     }
-    alert('Pertanyaan Anda telah terkirim. Admin akan membalas melalui email.');
-    setNama('');
-    setEmail('');
+
+    setLoading(true);
+    const pesanBaru = {
+      id: Date.now(),
+      nama, email, pertanyaan,
+      pengguna_id: user?.id || null,
+      balasan: null,
+      waktu: new Date().toISOString(),
+    };
+
+    // Coba kirim ke backend
+    try {
+      const res = await fetch('http://localhost:8080/api/pesan-pelanggan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ nama, email, pertanyaan, pengguna_id: user?.id || null }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        pesanBaru.id = saved.id || pesanBaru.id;
+      }
+    } catch { /* simpan ke localStorage sebagai fallback */ }
+
+    // Simpan ke localStorage
+    const semuaPesan = JSON.parse(localStorage.getItem('vipizza_pesan_kontak') || '[]');
+    semuaPesan.push(pesanBaru);
+    localStorage.setItem('vipizza_pesan_kontak', JSON.stringify(semuaPesan));
+
+    setLoading(false);
     setPertanyaan('');
+    Swal.fire({ icon: 'success', title: 'Terkirim!', text: 'Pertanyaan Anda telah dikirim. Admin akan membalas segera.', timer: 2500, showConfirmButton: false });
+    muatRiwayat();
   };
 
   const faq = [
@@ -27,10 +94,7 @@ export default function Kontak() {
 
   return (
     <div>
-      <PageHero
-        title="Kontak"
-        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Kontak' }]}
-      />
+
 
       <section className="py-12 bg-[#f8f9fa]">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -40,7 +104,7 @@ export default function Kontak() {
             <h2 className="text-xl font-bold text-[#212529] mb-6">Hubungi Kami</h2>
             <div className="space-y-4">
               {[
-                { icon: MapPin, label: 'Alamat', value: 'Jl. Khatib Sulaiman, Kota Padang, Sumatera Barat' },
+                { icon: MapPin, label: 'Alamat', value: 'Komplek Taruko I Blok L No. 29, Korong Gadang, Kec. Kuranji, Kota Padang' },
                 { icon: Phone, label: 'Telepon / WhatsApp', value: '0823-4567-8901' },
                 { icon: Mail, label: 'Email', value: 'info@vipizza.com' },
               ].map(({ icon: Icon, label, value }) => (
@@ -65,6 +129,43 @@ export default function Kontak() {
                 ))}
               </div>
             </div>
+
+            {/* Riwayat Pesan Saya */}
+            {riwayatPesan.length > 0 && (
+              <div className="mt-8">
+                <h3 className="font-bold text-[#212529] mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#0b5345]" />
+                  Riwayat Pertanyaan Saya
+                </h3>
+                <div className="space-y-4">
+                  {riwayatPesan.map((pesan) => (
+                    <div key={pesan.id} className="card-bs p-4 border-l-4 border-[#0b5345]">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm font-semibold text-[#212529] leading-relaxed">{pesan.pertanyaan}</p>
+                        <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-[#6c757d]">
+                          <Clock className="w-3 h-3" />
+                          {new Date(pesan.waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      {pesan.balasan ? (
+                        <div className="mt-3 bg-[#e8f5f2] border border-[#0b5345]/20 rounded-lg p-3 flex gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-[#0b5345] shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[10px] font-bold text-[#0b5345] mb-0.5">Balasan Admin:</p>
+                            <p className="text-xs text-[#212529] leading-relaxed">{pesan.balasan}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 font-semibold">
+                          <Clock className="w-3 h-3" />
+                          Menunggu balasan admin...
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Form pertanyaan */}
@@ -106,9 +207,9 @@ export default function Kontak() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-primary flex items-center justify-center gap-2 py-2.5">
+              <button type="submit" disabled={loading} className="btn-primary flex items-center justify-center gap-2 py-2.5">
                 <Send className="w-4 h-4" />
-                Kirim Pertanyaan
+                {loading ? 'Mengirim...' : 'Kirim Pertanyaan'}
               </button>
             </form>
           </div>
@@ -117,3 +218,4 @@ export default function Kontak() {
     </div>
   );
 }
+

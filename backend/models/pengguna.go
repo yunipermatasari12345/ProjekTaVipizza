@@ -17,5 +17,6 @@ type Pengguna struct {
 
 // TableName menentukan nama tabel di MySQL
 func (Pengguna) TableName() string {
-	return "pengguna"
+	return "users"
 }
+

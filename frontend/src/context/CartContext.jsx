@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 const CartContext = createContext();
 
@@ -40,7 +41,7 @@ export function CartProvider({ children }) {
       
       // Validasi Stok
       if (jumlahBaru > menu.stok) {
-        alert(`Maaf, stok pizza '${menu.nama}' tidak cukup. Maksimal pembelian: ${menu.stok}`);
+        Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: `Maaf, stok pizza '${menu.nama}' tidak cukup. Maksimal pembelian: ${menu.stok}` });
         return false;
       }
 
@@ -50,7 +51,7 @@ export function CartProvider({ children }) {
     } else {
       // Validasi Stok
       if (jumlah > menu.stok) {
-        alert(`Maaf, stok pizza '${menu.nama}' tidak cukup. Maksimal pembelian: ${menu.stok}`);
+        Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: `Maaf, stok pizza '${menu.nama}' tidak cukup. Maksimal pembelian: ${menu.stok}` });
         return false;
       }
       simpanKeranjang([...keranjang, { menu, jumlah, catatan }]);
@@ -72,7 +73,7 @@ export function CartProvider({ children }) {
     const baru = keranjang.map(item => {
       if (item.menu.id === menuId) {
         if (jumlah > item.menu.stok) {
-          alert(`Maaf, stok pizza '${item.menu.nama}' hanya tersedia ${item.menu.stok} porsi.`);
+          Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: `Maaf, stok pizza '${item.menu.nama}' hanya tersedia ${item.menu.stok} porsi.` });
           return item;
         }
         return { ...item, jumlah };

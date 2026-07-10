@@ -1,0 +1,51 @@
+Berhasil terhubung ke database MySQL 'vipizza'! (Tabel dimigrasikan otomatis)
+Melakukan migrasi database...
+Migrasi database selesai!
+[SEED] Memperbarui email pelanggan: budi@gmail.com -> budi@vipizza.com
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
+[GIN-debug] HEAD   /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
+[GIN-debug] POST   /api/auth/register        --> vipizza/handlers.Registrasi (4 handlers)
+[GIN-debug] POST   /api/auth/login           --> vipizza/handlers.Login (4 handlers)
+[GIN-debug] GET    /api/menus                --> vipizza/handlers.AmbilSemuaMenu (4 handlers)
+[GIN-debug] GET    /api/menus/:id            --> vipizza/handlers.AmbilDetailMenu (4 handlers)
+[GIN-debug] GET    /api/promo                --> vipizza/handlers.AmbilSemuaPromo (4 handlers)
+[GIN-debug] GET    /api/promo/check          --> vipizza/handlers.CekKodePromo (4 handlers)
+[GIN-debug] POST   /api/payment/notification --> vipizza/handlers.MidtransNotification (4 handlers)
+[GIN-debug] GET    /api/auth/me              --> vipizza/handlers.GetProfil (5 handlers)
+[GIN-debug] PUT    /api/auth/me              --> vipizza/handlers.UpdateProfil (5 handlers)
+[GIN-debug] PUT    /api/auth/change-password --> vipizza/handlers.ChangePassword (5 handlers)
+[GIN-debug] GET    /api/dashboard            --> vipizza/handlers.RingkasanDashboardPelanggan (5 handlers)
+[GIN-debug] POST   /api/orders               --> vipizza/handlers.BuatPesanan (6 handlers)
+[GIN-debug] GET    /api/orders/my            --> vipizza/handlers.RiwayatPesananSaya (5 handlers)
+[GIN-debug] GET    /api/orders/:id           --> vipizza/handlers.DetailPesanan (5 handlers)
+[GIN-debug] POST   /api/orders/:id/payment   --> vipizza/handlers.UnggahBuktiBayar (5 handlers)
+[GIN-debug] POST   /api/orders/:id/refresh-token --> vipizza/handlers.RefreshSnapToken (5 handlers)
+[GIN-debug] POST   /api/menus                --> vipizza/handlers.TambahMenu (6 handlers)
+[GIN-debug] PUT    /api/menus/:id            --> vipizza/handlers.EditMenu (6 handlers)
+[GIN-debug] DELETE /api/menus/:id            --> vipizza/handlers.HapusMenu (6 handlers)
+[GIN-debug] GET    /api/categories           --> vipizza/handlers.AmbilSemuaKategori (6 handlers)
+[GIN-debug] GET    /api/categories/:id       --> vipizza/handlers.AmbilDetailKategori (6 handlers)
+[GIN-debug] POST   /api/categories           --> vipizza/handlers.TambahKategori (6 handlers)
+[GIN-debug] PUT    /api/categories/:id       --> vipizza/handlers.EditKategori (6 handlers)
+[GIN-debug] DELETE /api/categories/:id       --> vipizza/handlers.HapusKategori (6 handlers)
+[GIN-debug] GET    /api/orders               --> vipizza/handlers.AmbilSemuaPesanan (6 handlers)
+[GIN-debug] PUT    /api/orders/:id/status    --> vipizza/handlers.PerbaruiStatusPesanan (6 handlers)
+[GIN-debug] GET    /api/promo/admin          --> vipizza/handlers.AmbilSemuaPromoAdmin (6 handlers)
+[GIN-debug] POST   /api/promo                --> vipizza/handlers.TambahPromo (6 handlers)
+[GIN-debug] PUT    /api/promo/:id            --> vipizza/handlers.EditPromo (6 handlers)
+[GIN-debug] DELETE /api/promo/:id            --> vipizza/handlers.HapusPromo (6 handlers)
+[GIN-debug] GET    /api/users                --> vipizza/handlers.AmbilSemuaPelanggan (6 handlers)
+[GIN-debug] GET    /api/users/:id            --> vipizza/handlers.AmbilDetailPelanggan (6 handlers)
+[GIN-debug] GET    /api/reports/summary      --> vipizza/handlers.RingkasanDashboard (6 handlers)
+[GIN-debug] GET    /api/reports/sales        --> vipizza/handlers.LaporanPenjualanJSON (6 handlers)
+[GIN-debug] GET    /api/reports/pdf          --> vipizza/handlers.LaporanPenjualanPDF (6 handlers)
+Server backend ViPizza berjalan pada port 8080...
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080

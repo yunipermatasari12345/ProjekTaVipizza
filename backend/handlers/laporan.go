@@ -21,33 +21,23 @@ type ItemLaporanRingkasan struct {
 
 // LaporanPenjualanJSON menghasilkan rangkuman laporan penjualan (Khusus Admin)
 func LaporanPenjualanJSON(c *gin.Context) {
-	tipe := c.Query("tipe") // 'harian' atau 'bulanan'
-	tanggal := c.Query("tanggal") // YYYY-MM-DD untuk harian
-	bulan := c.Query("bulan") // YYYY-MM untuk bulanan
-
-	if tipe != "harian" && tipe != "bulanan" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe laporan harus 'harian' atau 'bulanan'"})
-		return
-	}
+	tanggalAwal := c.Query("tanggal_awal")
+	tanggalAkhir := c.Query("tanggal_akhir")
 
 	var pesananList []models.Pesanan
 	query := config.DB.Preload("Pengguna").Preload("ItemPesanan.Menu").Where("status = ?", "selesai")
 
 	var labelPeriode string
-
-	if tipe == "harian" {
-		if tanggal == "" {
-			tanggal = time.Now().Format("2006-01-02")
-		}
-		query = query.Where("DATE(tanggal_pesanan) = ?", tanggal)
-		labelPeriode = tanggal
-	} else {
-		if bulan == "" {
-			bulan = time.Now().Format("2006-01")
-		}
-		query = query.Where("DATE_FORMAT(tanggal_pesanan, '%Y-%m') = ?", bulan)
-		labelPeriode = bulan
+	
+	if tanggalAwal == "" {
+		tanggalAwal = time.Now().Format("2006-01-02")
 	}
+	if tanggalAkhir == "" {
+		tanggalAkhir = time.Now().Format("2006-01-02")
+	}
+	
+	query = query.Where("DATE(tanggal_pesanan) >= ? AND DATE(tanggal_pesanan) <= ?", tanggalAwal, tanggalAkhir)
+	labelPeriode = tanggalAwal + " s/d " + tanggalAkhir
 
 	if err := query.Find(&pesananList).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data laporan penjualan"})
@@ -81,7 +71,7 @@ func LaporanPenjualanJSON(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"tipe":                  tipe,
+		"tipe":                  "rentang",
 		"periode":               labelPeriode,
 		"total_transaksi":       totalPesananSelesai,
 		"total_pendapatan":      totalPendapatan,
@@ -92,32 +82,19 @@ func LaporanPenjualanJSON(c *gin.Context) {
 
 // LaporanPenjualanPDF membuat file PDF Laporan Penjualan (Khusus Admin)
 func LaporanPenjualanPDF(c *gin.Context) {
-	tipe := c.Query("tipe")
-	tanggal := c.Query("tanggal")
-	bulan := c.Query("bulan")
-
-	if tipe != "harian" && tipe != "bulanan" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe laporan wajib 'harian' atau 'bulanan'"})
-		return
-	}
+	tanggalAwal := c.Query("tanggal_awal")
+	tanggalAkhir := c.Query("tanggal_akhir")
 
 	var pesananList []models.Pesanan
 	query := config.DB.Preload("Pengguna").Preload("ItemPesanan.Menu").Where("status = ?", "selesai")
 
-	var labelPeriode string
-	if tipe == "harian" {
-		if tanggal == "" {
-			tanggal = time.Now().Format("2006-01-02")
-		}
-		query = query.Where("DATE(tanggal_pesanan) = ?", tanggal)
-		labelPeriode = tanggal
-	} else {
-		if bulan == "" {
-			bulan = time.Now().Format("2006-01")
-		}
-		query = query.Where("DATE_FORMAT(tanggal_pesanan, '%Y-%m') = ?", bulan)
-		labelPeriode = bulan
+	if tanggalAwal == "" {
+		tanggalAwal = time.Now().Format("2006-01-02")
 	}
+	if tanggalAkhir == "" {
+		tanggalAkhir = time.Now().Format("2006-01-02")
+	}
+	query = query.Where("DATE(tanggal_pesanan) >= ? AND DATE(tanggal_pesanan) <= ?", tanggalAwal, tanggalAkhir)
 
 	if err := query.Find(&pesananList).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data untuk PDF"})
@@ -134,82 +111,93 @@ func LaporanPenjualanPDF(c *gin.Context) {
 	pdf.AddPage()
 
 	// 2. Desain Header Laporan Penjualan
-	pdf.SetFont("Arial", "B", 18)
-	pdf.SetTextColor(219, 39, 119) // Warna Pink Khas Vipizza (Pink 600: RGB 219, 39, 119)
-	pdf.CellFormat(190, 10, "VIPIZZA HOMEMADE PADANG", "0", 1, "C", false, 0, "")
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 0, 0) // Hitam
+	pdf.CellFormat(190, 8, "VIPIZZA HOMEMADE PADANG", "0", 1, "C", false, 0, "")
 	
-	pdf.SetFont("Arial", "", 10)
-	pdf.SetTextColor(100, 116, 139) // Slate Gray
-	pdf.CellFormat(190, 5, "Sistem Informasi Penjualan & Pemesanan Online Kuliner Kota Padang", "0", 1, "C", false, 0, "")
-	pdf.CellFormat(190, 5, "Jl. Perintis Kemerdekaan, Padang, Sumatera Barat", "0", 1, "C", false, 0, "")
+	pdf.SetFont("Arial", "", 9)
+	pdf.CellFormat(190, 5, "Komplek Taruko I Blok L No. 29, Korong Gadang, Kecamatan Kuranji, Kota Padang", "0", 1, "C", false, 0, "")
 	
 	// Garis pembatas tebal
-	pdf.SetDrawColor(219, 39, 119)
-	pdf.SetLineWidth(0.8)
-	pdf.Line(10, 32, 200, 32)
-	pdf.Ln(8)
+	pdf.SetDrawColor(0, 0, 0)
+	pdf.SetLineWidth(0.5)
+	pdf.Line(10, 25, 200, 25)
+	pdf.Ln(10)
 
 	// 3. Sub-Header Informasi Periode
-	pdf.SetFont("Arial", "B", 13)
-	pdf.SetTextColor(30, 41, 59) // Deep Slate
-	pdf.CellFormat(190, 8, "LAPORAN PENJUALAN " + string([]rune(tipe)[0]-32) + string([]rune(tipe)[1:]), "0", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "B", 12)
+	pdf.CellFormat(190, 8, "Laporan Transaksi", "0", 1, "C", false, 0, "")
 	
-	pdf.SetFont("Arial", "", 10)
-	pdf.CellFormat(50, 6, "Periode Laporan:", "0", 0, "L", false, 0, "")
-	pdf.SetFont("Arial", "B", 10)
-	pdf.CellFormat(140, 6, labelPeriode, "0", 1, "L", false, 0, "")
-	
-	pdf.SetFont("Arial", "", 10)
-	pdf.CellFormat(50, 6, "Tanggal Cetak:", "0", 0, "L", false, 0, "")
-	pdf.SetFont("Arial", "B", 10)
-	pdf.CellFormat(140, 6, time.Now().Format("02 January 2006 15:04:05"), "0", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "", 9)
+	tglLaporan := fmt.Sprintf("Periode: %s s/d %s | Urutan: Terbaru", tanggalAwal, tanggalAkhir)
+	pdf.CellFormat(190, 5, tglLaporan, "0", 1, "C", false, 0, "")
 	pdf.Ln(6)
 
 	// 4. Tabel Daftar Penjualan
-	pdf.SetFont("Arial", "B", 10)
-	// Header Tabel (Warna Latar Pink)
-	pdf.SetFillColor(219, 39, 119)
+	pdf.SetFont("Arial", "B", 8)
+	// Header Tabel (Warna Biru Gelap / Navy seperti gambar)
+	pdf.SetFillColor(26, 29, 35)
 	pdf.SetTextColor(255, 255, 255)
+	pdf.SetDrawColor(0, 0, 0)
+	pdf.SetLineWidth(0.2)
 	
-	pdf.CellFormat(12, 8, "No", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(25, 8, "ID Pesanan", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(45, 8, "Nama Pelanggan", "1", 0, "L", true, 0, "")
-	pdf.CellFormat(38, 8, "Metode Bayar", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(35, 8, "Tanggal", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(35, 8, "Total Penjualan", "1", 1, "R", true, 0, "")
+	// Lebar Total = 190mm
+	w := []float64{8, 22, 28, 26, 25, 28, 26, 27}
+	pdf.CellFormat(w[0], 8, "No", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[1], 8, "Tanggal", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[2], 8, "Pelanggan", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[3], 8, "Invoice", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[4], 8, "Status Order", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[5], 8, "Metode Bayar", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[6], 8, "Status Bayar", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(w[7], 8, "Total Harga", "1", 1, "C", true, 0, "")
 
 	// Isi Tabel
-	pdf.SetFont("Arial", "", 10)
-	pdf.SetTextColor(51, 65, 85) // Darker text
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(0, 0, 0) 
+	pdf.SetFillColor(255, 255, 255)
 	
 	for idx, pes := range pesananList {
-		// Mengganti baris berselang-seling (Zebra striping)
-		isFill := idx%2 == 1
-		if isFill {
-			pdf.SetFillColor(253, 242, 248) // Light Pink tint
-		} else {
-			pdf.SetFillColor(255, 255, 255)
+		pdf.CellFormat(w[0], 8, strconv.Itoa(idx+1), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(w[1], 8, pes.TanggalPesanan.Format("02-01-2006"), "1", 0, "C", false, 0, "")
+		
+		// Potong nama jika terlalu panjang
+		namaStr := pes.Pengguna.Nama
+		if len(namaStr) > 15 {
+			namaStr = namaStr[:15] + "..."
 		}
-
-		pdf.CellFormat(12, 8, strconv.Itoa(idx+1), "1", 0, "C", true, 0, "")
-		pdf.CellFormat(25, 8, fmt.Sprintf("#%d", pes.ID), "1", 0, "C", true, 0, "")
-		pdf.CellFormat(45, 8, pes.Pengguna.Nama, "1", 0, "L", true, 0, "")
+		pdf.CellFormat(w[2], 8, namaStr, "1", 0, "L", false, 0, "")
+		
+		pdf.CellFormat(w[3], 8, fmt.Sprintf("INV-%d%04d", pes.TanggalPesanan.Year(), pes.ID), "1", 0, "C", false, 0, "")
+		
+		statusOrder := "Selesai"
+		if pes.Status == "menunggu_konfirmasi" { statusOrder = "Pending" }
+		if pes.Status == "diproses" { statusOrder = "Diproses" }
+		pdf.CellFormat(w[4], 8, statusOrder, "1", 0, "C", false, 0, "")
 		
 		metodeStr := "Transfer Bank"
-		if pes.MetodePembayaran == "qris" {
-			metodeStr = "QRIS"
-		}
-		pdf.CellFormat(38, 8, metodeStr, "1", 0, "C", true, 0, "")
-		pdf.CellFormat(35, 8, pes.TanggalPesanan.Format("02/01/2006"), "1", 0, "C", true, 0, "")
-		pdf.CellFormat(35, 8, fmt.Sprintf("Rp %s", formatRupiah(pes.TotalHarga)), "1", 1, "R", true, 0, "")
+		if pes.MetodePembayaran == "qris" { metodeStr = "QRIS" }
+		if pes.MetodePembayaran == "tunai" { metodeStr = "Cash" }
+		pdf.CellFormat(w[5], 8, metodeStr, "1", 0, "C", false, 0, "")
+		
+		statusBayar := "Paid"
+		if pes.Status == "menunggu_pembayaran" { statusBayar = "Unpaid" }
+		pdf.CellFormat(w[6], 8, statusBayar, "1", 0, "C", false, 0, "")
+		
+		pdf.CellFormat(w[7], 8, fmt.Sprintf("Rp %s", formatRupiah(pes.TotalHarga)), "1", 1, "R", false, 0, "")
 	}
 
 	// 5. Total Pendapatan Ringkasan di Bawah Tabel
-	pdf.SetFont("Arial", "B", 10)
-	pdf.SetFillColor(241, 245, 249) // Gray background
-	pdf.CellFormat(155, 8, "TOTAL PENDAPATAN", "1", 0, "C", true, 0, "")
-	pdf.SetTextColor(219, 39, 119)
-	pdf.CellFormat(35, 8, fmt.Sprintf("Rp %s", formatRupiah(totalPendapatan)), "1", 1, "R", true, 0, "")
+	pdf.SetFont("Arial", "B", 8)
+	pdf.SetFillColor(220, 230, 241) // Light blue summary background like the example
+	
+	// Baris 1: Jumlah Order
+	pdf.CellFormat(163, 7, "Jumlah Order:", "1", 0, "R", true, 0, "")
+	pdf.CellFormat(27, 7, strconv.Itoa(len(pesananList)), "1", 1, "R", true, 0, "")
+	
+	// Baris 2: Total Transaksi
+	pdf.CellFormat(163, 7, "Total Transaksi:", "1", 0, "R", true, 0, "")
+	pdf.CellFormat(27, 7, fmt.Sprintf("Rp %s", formatRupiah(totalPendapatan)), "1", 1, "R", true, 0, "")
 	
 	pdf.Ln(10)
 
@@ -224,7 +212,7 @@ func LaporanPenjualanPDF(c *gin.Context) {
 
 	// 6. Tulis file PDF ke output HTTP Response Stream
 	c.Header("Content-Type", "application/pdf")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=Laporan_Vipizza_%s_%s.pdf", tipe, labelPeriode))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=Laporan_Vipizza_%s_sd_%s.pdf", tanggalAwal, tanggalAkhir))
 	
 	err := pdf.Output(c.Writer)
 	if err != nil {

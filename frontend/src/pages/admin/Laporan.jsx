@@ -16,41 +16,31 @@ export default function Reports() {
     hitungLaporan();
   }, [tanggalAwal, tanggalAkhir]);
 
-  const hitungLaporan = () => {
-    const daftarPesanan = JSON.parse(localStorage.getItem('vipizza_orders_mock') || '[]');
-    
-    // Filter pesanan yang statusnya 'selesai' dan berada dalam rentang tanggal
-    const pesananTerfilter = daftarPesanan.filter(pes => {
-      if (pes.status !== 'selesai') return false;
-      
-      const tglPesanan = new Date(pes.tanggal_pesanan).toISOString().split('T')[0];
-      return tglPesanan >= tanggalAwal && tglPesanan <= tanggalAkhir;
-    });
-
-    setPesananSelesai(pesananTerfilter);
-
-    // Hitung Ringkasan Produk Terjual
-    const petaProduk = {};
-    let totalUang = 0;
-
-    pesananTerfilter.forEach(pes => {
-      totalUang += pes.total_harga;
-      pes.items.forEach(item => {
-        if (petaProduk[item.menu_id]) {
-          petaProduk[item.menu_id].jumlah += item.jumlah;
-          petaProduk[item.menu_id].total += (item.harga * item.jumlah);
-        } else {
-          petaProduk[item.menu_id] = {
-            nama: item.menu_nama,
-            jumlah: item.jumlah,
-            total: (item.harga * item.jumlah)
-          };
-        }
+  const hitungLaporan = async () => {
+    try {
+      const params = new URLSearchParams({
+        tanggal_awal: tanggalAwal,
+        tanggal_akhir: tanggalAkhir,
       });
-    });
 
-    setTotalPendapatan(totalUang);
-    setRingkasanProduk(Object.values(petaProduk));
+      const response = await fetch(`http://localhost:8080/api/reports/json?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('Gagal memuat laporan');
+      
+      const data = await response.json();
+      
+      setTotalPendapatan(data.total_pendapatan || 0);
+      setRingkasanProduk(data.ringkasan_produk || []);
+      setPesananSelesai(data.pesanan_detail || []);
+      
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleCetakLaporan = () => {
@@ -66,8 +56,8 @@ export default function Reports() {
     setPdfLoading(true);
     try {
       const params = new URLSearchParams({
-        tipe: 'harian',
-        tanggal: tanggalAkhir,
+        tanggal_awal: tanggalAwal,
+        tanggal_akhir: tanggalAkhir,
       });
 
       const response = await fetch(`http://localhost:8080/api/reports/pdf?${params.toString()}`, {
@@ -230,10 +220,10 @@ export default function Reports() {
                 {ringkasanProduk.map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 w-10">{idx + 1}</td>
-                    <td className="px-5 py-4 font-bold text-slate-800">{item.nama}</td>
-                    <td className="px-5 py-4 text-center font-bold text-slate-700">{item.jumlah} Piring / Porsi</td>
+                    <td className="px-5 py-4 font-bold text-slate-800">{item.menu_nama}</td>
+                    <td className="px-5 py-4 text-center font-bold text-slate-700">{item.jumlah_terjual} Porsi</td>
                     <td className="px-5 py-4 text-right font-extrabold text-pink-600">
-                      Rp {item.total.toLocaleString('id-ID')}
+                      Rp {item.total_uang.toLocaleString('id-ID')}
                     </td>
                   </tr>
                 ))}
@@ -267,7 +257,7 @@ export default function Reports() {
                   <tr key={pes.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 font-bold text-slate-800">#{pes.id}</td>
                     <td className="px-5 py-4 uppercase text-xs font-semibold text-slate-500">{pes.metode_pembayaran}</td>
-                    <td className="px-5 py-4 text-slate-600 text-xs">{pes.telepon}</td>
+                    <td className="px-5 py-4 text-slate-600 text-xs">{pes.pengguna?.telepon || '-'}</td>
                     <td className="px-5 py-4 text-right font-extrabold text-pink-600">
                       Rp {pes.total_harga.toLocaleString('id-ID')}
                     </td>

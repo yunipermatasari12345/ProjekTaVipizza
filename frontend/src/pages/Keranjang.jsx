@@ -2,29 +2,32 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, Trash2, Plus, Minus, CreditCard, Wallet, ChevronRight, MapPin, Loader2 } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, CreditCard, ChevronRight, MapPin } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUrl';
+import Swal from 'sweetalert2';
 
 export default function Cart() {
   const { keranjang, ubahJumlahItem, ubahCatatanItem, hapusDariKeranjang, hitungTotalHarga, kosongkanKeranjang } = useCart();
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
 
+  // State Form Checkout
   const [nama, setNama] = useState(user?.nama || '');
   const [telepon, setTelepon] = useState(user?.telepon || '');
   const [alamat, setAlamat] = useState(user?.alamat || '');
-  const [catatan, setCatatan] = useState('');
   const [metodePembayaran, setMetodePembayaran] = useState('midtrans');
 
+  // State Promo
   const [kodePromoInput, setKodePromoInput] = useState('');
-  const [promoAktif, setPromoAktif] = useState(null);
+  const [promoAktif, setPromoAktif] = useState(null); // { kode, diskon }
   const [pesanPromo, setPesanPromo] = useState({ text: '', isError: false });
 
   const totalHarga = hitungTotalHarga();
   const diskonPersen = promoAktif ? promoAktif.diskon : 0;
   const nilaiDiskon = (totalHarga * diskonPersen) / 100;
   const totalSetelahDiskon = totalHarga - nilaiDiskon;
-  const ongkosKirim = totalHarga > 0 ? 10000 : 0;
+  
+  const ongkosKirim = totalHarga > 0 ? 10000 : 0; // Ongkir Flat Rp 10.000 untuk Kota Padang
   const grandTotal = totalSetelahDiskon + ongkosKirim;
 
   const handleCekPromo = async () => {
@@ -46,32 +49,26 @@ export default function Cart() {
 
   const handleCheckout = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    const jamSekarang = new Date().getHours();
-    if (jamSekarang < 9 || jamSekarang >= 21) {
-      alert("Maaf, Vipizza Homemade Padang sedang TUTUP. Kami buka setiap hari mulai pukul 09.00 - 21.00 WIB.");
-      setLoading(false);
-      return;
-    }
+    // Bebas pesan kapan saja (24 Jam)
 
     if (keranjang.length === 0) {
-      alert("Keranjang belanja Anda masih kosong!");
-      setLoading(false);
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Keranjang belanja Anda masih kosong!' });
       return;
     }
 
     if (!nama || !telepon || !alamat) {
-      alert("Mohon lengkapi seluruh data pengiriman!");
-      setLoading(false);
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon lengkapi seluruh data pengiriman!' });
       return;
     }
 
+    // Simulasi pembuatan ID pesanan unik jika offline
+    const mockOrderId = Math.floor(100000 + Math.random() * 900000);
+
+    // Persiapkan payload API
     const payload = {
-      nama_penerima: nama,
       alamat_pengiriman: alamat,
       telepon: telepon,
-      catatan: catatan,
       metode_pembayaran: metodePembayaran,
       kode_promo: promoAktif ? promoAktif.kode : "",
       items: keranjang.map(item => ({
@@ -80,6 +77,11 @@ export default function Cart() {
       }))
     };
 
+    let realOrderId = mockOrderId;
+    let databaseSuccess = false;
+    let snapTokenStr = "";
+
+    // Coba kirim ke REST API Backend
     try {
       const response = await fetch('http://localhost:8080/api/orders', {
         method: 'POST',
@@ -90,43 +92,98 @@ export default function Cart() {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        alert(errData.error || 'Gagal membuat pesanan');
-        setLoading(false);
-        return;
-      }
-
-      const res = await response.json();
-      const orderId = res.pesanan_id;
-      const snapTokenStr = res.snap_token || '';
-
-      kosongkanKeranjang();
-
-      if (metodePembayaran === 'midtrans' && snapTokenStr) {
-        window.snap.pay(snapTokenStr, {
-          onSuccess: function () {
-            navigate(`/track/${orderId}`);
-          },
-          onPending: function () {
-            navigate(`/track/${orderId}`);
-          },
-          onError: function () {
-            alert('Pembayaran gagal! Silakan coba lagi.');
-            navigate(`/track/${orderId}`);
-          },
-          onClose: function () {
-            navigate(`/track/${orderId}`);
+      if (response.ok) {
+        const res = await response.json();
+        if (res && res.pesanan_id) {
+          realOrderId = res.pesanan_id;
+          databaseSuccess = true;
+          if (res.snap_token) {
+            snapTokenStr = res.snap_token;
           }
-        });
+        }
       } else {
-        alert(`Pesanan #${orderId} berhasil dibuat!`);
-        navigate(`/track/${orderId}`);
+        const errorData = await response.json();
+        console.warn("Gagal membuat pesanan di server:", errorData.error);
       }
     } catch (err) {
-      alert('Gagal terhubung ke server. Pastikan backend sedang berjalan.');
-      setLoading(false);
+      console.warn("Koneksi API backend offline. Menggunakan mode simulasi lokal.", err.message);
     }
+
+    // Buat objek pesanan untuk disimpan lokal sebagai cache tracking
+    const pesananMock = {
+      id: realOrderId,
+      tanggal_pesanan: new Date().toISOString(),
+      total_harga: grandTotal,
+      status: "menunggu_pembayaran",
+      alamat_pengiriman: alamat,
+      telepon: telepon,
+      metode_pembayaran: metodePembayaran,
+      bukti_pembayaran: "",
+      snap_token: snapTokenStr,
+      items: keranjang.map(item => ({
+        menu_id: item.menu.id,
+        menu_nama: item.menu.nama,
+        jumlah: item.jumlah,
+        harga: item.menu.harga,
+        catatan: item.catatan || ""
+      }))
+    };
+
+    // Ambil riwayat pesanan yang sudah ada di lokal
+    const pesananLokal = JSON.parse(localStorage.getItem('vipizza_orders_mock') || '[]');
+    pesananLokal.push(pesananMock);
+    localStorage.setItem('vipizza_orders_mock', JSON.stringify(pesananLokal));
+
+    // Simpan pesanan aktif terakhir ke lokal
+    localStorage.setItem('vipizza_active_order_mock', JSON.stringify(pesananMock));
+
+    // Kosongkan keranjang belanja
+    kosongkanKeranjang();
+
+    if (databaseSuccess) {
+      if (metodePembayaran === 'midtrans' && snapTokenStr) {
+        if (window.snap) {
+          // Panggil Midtrans Snap
+          window.snap.pay(snapTokenStr, {
+            onSuccess: function (result) {
+              fetch('http://localhost:8080/api/orders/' + realOrderId + '/verify-payment', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+              }).catch(function(){});
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Pembayaran sukses!' }).then(() => {
+                navigate(`/track/${realOrderId}`);
+              });
+            },
+            onPending: function (result) {
+              Swal.fire({ icon: 'info', title: 'Menunggu', text: 'Menunggu pembayaran Anda...' }).then(() => {
+                navigate(`/track/${realOrderId}`);
+              });
+            },
+            onError: function (result) {
+              Swal.fire({ icon: 'error', title: 'Gagal', text: 'Pembayaran gagal: ' + (result.status_message || 'Terjadi kesalahan') }).then(() => {
+                navigate(`/track/${realOrderId}`);
+              });
+            },
+            onClose: function () {
+              Swal.fire({ icon: 'warning', title: 'Dibatalkan', text: 'Anda menutup popup sebelum menyelesaikan pembayaran.' }).then(() => {
+                navigate(`/track/${realOrderId}`);
+              });
+            }
+          });
+          return;
+        } else {
+          Swal.fire({ icon: 'error', title: 'Sistem Belum Siap', text: 'Sistem pembayaran Midtrans belum dimuat. Silakan refresh halaman dan coba lagi.' });
+        }
+      } else {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: `Pesanan #${realOrderId} berhasil dibuat! Silakan lakukan pembayaran.` }).then(() => {
+          navigate(`/track/${realOrderId}`);
+        });
+        return; // Prevents the navigate below from running immediately
+      }
+    } else {
+      Swal.fire({ icon: 'error', title: 'Gagal', text: `Pesanan #${realOrderId} gagal dibuat di server. Coba login ulang atau daftar akun baru.` });
+    }
+    navigate(`/track/${realOrderId}`);
   };
 
   return (
@@ -150,13 +207,13 @@ export default function Cart() {
                   className="card-fe-white p-4 flex flex-col sm:flex-row items-center gap-4"
                 >
                   {/* Gambar Pizza */}
-                  <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
-                    <img 
-                      src={item.menu.gambar_url || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=200"} 
-                      alt={item.menu.nama} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                    <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-200">
+                      <img 
+                        src={getImageUrl(item.menu.gambar_url) || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=200"} 
+                        alt={item.menu.nama}
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
 
                   {/* Keterangan & Jumlah */}
                   <div className="flex-grow flex flex-col gap-1 w-full text-left">
@@ -203,7 +260,7 @@ export default function Cart() {
                   className="p-2 hover:bg-red-50 rounded-full transition-colors cursor-pointer shrink-0"
                   onClick={() => {
                     hapusDariKeranjang(item.menu.id);
-                    alert(`${item.menu.nama} dihapus dari keranjang belanja!`);
+                    Swal.fire({ icon: 'success', title: 'Dihapus', text: `${item.menu.nama} dihapus dari keranjang belanja!`, timer: 1500, showConfirmButton: false });
                   }}
                 >
                   <Trash2 className="w-5 h-5 text-red-500" />
@@ -330,16 +387,6 @@ export default function Cart() {
                         required
                       />
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Catatan (opsional)</label>
-                      <textarea
-                        placeholder="Contoh: Extra keju, Pedas level 2, Tanpa bawang..."
-                        value={catatan}
-                        onChange={(e) => setCatatan(e.target.value)}
-                        rows={2}
-                        className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none"
-                      />
-                    </div>
                   </div>
 
                   {/* Metode Pembayaran */}
@@ -348,56 +395,37 @@ export default function Cart() {
                       <CreditCard className="w-4 h-4 text-slate-500" />
                       Metode Pembayaran
                     </span>
-
+                    
                     <div className="flex flex-col gap-2.5 mt-1">
-                      <label className={`border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer w-full transition-colors ${metodePembayaran === 'midtrans' ? 'border-brand-orange bg-brand-orange-light/30 ring-1 ring-brand-orange' : 'border-slate-200 hover:border-slate-300'}`}>
-                        <input
-                          type="radio"
-                          name="metode"
-                          value="midtrans"
-                          checked={metodePembayaran === 'midtrans'}
-                          onChange={(e) => setMetodePembayaran(e.target.value)}
-                          className="mt-1 accent-brand-orange"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-xs text-slate-800">Bayar Online (Midtrans)</span>
-                          <span className="text-[10px] text-slate-400 mt-0.5">Gopay, ShopeePay, VA BCA/Mandiri/BNI, QRIS, dll</span>
-                        </div>
-                      </label>
-
-                      <label className={`border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer w-full transition-colors ${metodePembayaran === 'tunai' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}>
-                        <input
-                          type="radio"
-                          name="metode"
-                          value="tunai"
-                          checked={metodePembayaran === 'tunai'}
-                          onChange={(e) => setMetodePembayaran(e.target.value)}
-                          className="mt-1 accent-emerald-500"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-xs text-slate-800">Bayar Tunai (Saat Diantar)</span>
-                          <span className="text-[10px] text-slate-400 mt-0.5">Bayar langsung saat pesanan sampai di tempat Anda</span>
-                        </div>
-                      </label>
+                      {[
+                        { value: 'midtrans', label: 'Bayar Otomatis (Midtrans)', desc: 'Gopay, ShopeePay, VA BCA, Mandiri, dll' },
+                        { value: 'transfer_bank', label: 'Transfer Bank', desc: 'BCA / Mandiri / BNI — Upload bukti bayar' },
+                        { value: 'qris', label: 'QRIS', desc: 'Scan QR via GoPay, ShopeePay, OVO, dll — Upload bukti bayar' },
+                      ].map(met => (
+                        <label key={met.value} className={`border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer w-full transition-colors ${metodePembayaran === met.value ? 'border-brand-orange bg-brand-orange-light/30 ring-1 ring-brand-orange' : 'border-slate-200 hover:border-slate-300'}`}>
+                          <input 
+                            type="radio" 
+                            name="metode" 
+                            value={met.value}
+                            checked={metodePembayaran === met.value}
+                            onChange={() => setMetodePembayaran(met.value)}
+                            className="mt-1 accent-brand-orange"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-xs text-slate-800">{met.label}</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">{met.desc}</span>
+                          </div>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="btn-primary font-extrabold rounded-full py-3.5 px-6 shadow-lg shadow-pink-200 w-full mt-4 flex items-center justify-center gap-1.5 hover:scale-[1.01] transform transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="btn-primary font-extrabold rounded-full py-3.5 px-6 shadow-lg shadow-pink-200 w-full mt-4 flex items-center justify-center gap-1.5 hover:scale-[1.01] transform transition-all cursor-pointer"
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Memproses...
-                      </>
-                    ) : (
-                      <>
-                        Proses Pesanan Sekarang
-                        <ChevronRight className="w-5 h-5" />
-                      </>
-                    )}
+                    Proses Pesanan Sekarang
+                    <ChevronRight className="w-5 h-5" />
                   </button>
 
                 </form>

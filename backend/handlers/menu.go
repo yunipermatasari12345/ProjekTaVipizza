@@ -49,6 +49,8 @@ func TambahMenu(c *gin.Context) {
 	nama := c.PostForm("nama")
 	deskripsi := c.PostForm("deskripsi")
 	hargaStr := c.PostForm("harga")
+	hargaMediumStr := c.PostForm("harga_medium")
+	hargaLargeStr := c.PostForm("harga_large")
 	stokStr := c.PostForm("stok")
 	kategori := c.PostForm("kategori")
 
@@ -63,6 +65,20 @@ func TambahMenu(c *gin.Context) {
 		return
 	}
 
+	hargaMedium := harga
+	if hargaMediumStr != "" {
+		if hm, err := strconv.Atoi(hargaMediumStr); err == nil && hm >= 0 {
+			hargaMedium = hm
+		}
+	}
+
+	hargaLarge := hargaMedium + 15000
+	if hargaLargeStr != "" {
+		if hl, err := strconv.Atoi(hargaLargeStr); err == nil && hl >= 0 {
+			hargaLarge = hl
+		}
+	}
+
 	stok, err := strconv.Atoi(stokStr)
 	if err != nil || stok < 0 {
 		stok = 0
@@ -72,11 +88,9 @@ func TambahMenu(c *gin.Context) {
 	var gambarURL string
 	file, err := c.FormFile("gambar")
 	if err == nil {
-		// Pastikan direktori uploads/menus/ tersedia
 		dirUpload := "uploads/menus"
 		_ = os.MkdirAll(dirUpload, os.ModePerm)
 
-		// Buat nama file unik menggunakan unix timestamp
 		namaFile := fmt.Sprintf("%d_%s", time.Now().Unix(), filepath.Base(file.Filename))
 		pathFile := filepath.Join(dirUpload, namaFile)
 
@@ -87,14 +101,21 @@ func TambahMenu(c *gin.Context) {
 		gambarURL = "/uploads/menus/" + namaFile
 	}
 
+	isFavoritStr := c.PostForm("is_favorit")
+	isBestSellerStr := c.PostForm("is_best_seller")
+
 	menuBaru := models.Menu{
-		Nama:      nama,
-		Deskripsi: deskripsi,
-		Harga:     harga,
-		Stok:      stok,
-		Kategori:  kategori,
-		GambarURL: gambarURL,
-		Tersedia:  stok > 0,
+		Nama:         nama,
+		Deskripsi:    deskripsi,
+		Harga:        harga,
+		HargaMedium:  hargaMedium,
+		HargaLarge:   hargaLarge,
+		Stok:         stok,
+		Kategori:     kategori,
+		GambarURL:    gambarURL,
+		Tersedia:     stok > 0,
+		IsFavorit:    isFavoritStr == "true",
+		IsBestSeller: isBestSellerStr == "true",
 	}
 
 	if err := config.DB.Create(&menuBaru).Error; err != nil {
@@ -121,6 +142,8 @@ func EditMenu(c *gin.Context) {
 	nama := c.PostForm("nama")
 	deskripsi := c.PostForm("deskripsi")
 	hargaStr := c.PostForm("harga")
+	hargaMediumStr := c.PostForm("harga_medium")
+	hargaLargeStr := c.PostForm("harga_large")
 	stokStr := c.PostForm("stok")
 	kategori := c.PostForm("kategori")
 	tersediaStr := c.PostForm("tersedia")
@@ -142,11 +165,22 @@ func EditMenu(c *gin.Context) {
 		}
 	}
 
+	if hargaMediumStr != "" {
+		if hm, err := strconv.Atoi(hargaMediumStr); err == nil && hm >= 0 {
+			menu.HargaMedium = hm
+		}
+	}
+
+	if hargaLargeStr != "" {
+		if hl, err := strconv.Atoi(hargaLargeStr); err == nil && hl >= 0 {
+			menu.HargaLarge = hl
+		}
+	}
+
 	if stokStr != "" {
 		stok, err := strconv.Atoi(stokStr)
 		if err == nil && stok >= 0 {
 			menu.Stok = stok
-			// Atur otomatis ketersediaan berdasarkan stok
 			menu.Tersedia = stok > 0
 		}
 	}
@@ -155,13 +189,17 @@ func EditMenu(c *gin.Context) {
 		menu.Tersedia = tersediaStr == "true"
 	}
 
+	isFavoritStr := c.PostForm("is_favorit")
+	isBestSellerStr := c.PostForm("is_best_seller")
+	menu.IsFavorit = isFavoritStr == "true"
+	menu.IsBestSeller = isBestSellerStr == "true"
+
 	// Proses jika ada upload gambar baru
 	file, err := c.FormFile("gambar")
 	if err == nil {
 		dirUpload := "uploads/menus"
 		_ = os.MkdirAll(dirUpload, os.ModePerm)
 
-		// Hapus gambar lama jika ada
 		if menu.GambarURL != "" {
 			_ = os.Remove(filepath.Join(".", menu.GambarURL))
 		}

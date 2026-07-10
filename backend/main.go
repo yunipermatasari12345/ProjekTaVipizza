@@ -26,8 +26,10 @@ import (
 )
 
 func main() {
-	// 0. Muat file .env (jika ada) agar os.Getenv() bisa membaca variabel lingkungan
-	_ = godotenv.Load()
+	// 0. Muat file .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("[WARNING] File .env tidak ditemukan, menggunakan environment variable sistem")
+	}
 
 	// 1. Hubungkan ke database MySQL
 	config.HubungkanDatabase()
@@ -35,14 +37,29 @@ func main() {
 	// 1.5 Inisialisasi Midtrans
 	config.InisialisasiMidtrans()
 
-	// 2. Lakukan Auto-Migrasi Skema Database GORM
+	// 2. Lakukan Auto-Migrasi Skema Database GORM (9 Tabel TA Vipizza)
 	fmt.Println("Melakukan migrasi database...")
 	err := config.DB.AutoMigrate(
+		// 1. Tabel users (pengguna)
 		&models.Pengguna{},
+		// 2. Tabel categories (kategori menu)
+		&models.Kategori{},
+		// 3. Tabel menus (daftar menu pizza)
 		&models.Menu{},
+		// 4. Tabel promos (promo / diskon)
 		&models.Promo{},
+		// 5. Tabel carts (keranjang belanja)
+		&models.Keranjang{},
+		// 6. Tabel orders (pesanan)
 		&models.Pesanan{},
+		// 7. Tabel order_items (item dalam pesanan)
 		&models.ItemPesanan{},
+		// 8. Tabel payments (pembayaran)
+		&models.Pembayaran{},
+		// 9. Tabel notifications (notifikasi)
+		&models.Notifikasi{},
+		// 10. Tabel pesan_pelanggan (pertanyaan dari halaman Kontak)
+		&models.PesanPelanggan{},
 	)
 	if err != nil {
 		log.Fatalf("Gagal melakukan auto-migrasi database: %v", err)
@@ -91,20 +108,28 @@ func main() {
 		// Webhook Midtrans (publik, diakses oleh server midtrans)
 		api.POST("/payment/notification", handlers.MidtransNotification)
 
+		// Pesan pelanggan — kirim pesan (bisa tanpa login)
+		api.POST("/pesan-pelanggan", handlers.KirimPesanPelanggan)
+
 		// --- rute terproteksi (harus login terlebih dahulu) ---
 		terproteksi := api.Group("")
 		terproteksi.Use(middleware.WajibAutentikasi())
 		{
 			// Profil user
 			terproteksi.GET("/auth/me", handlers.GetProfil)
+			terproteksi.PUT("/auth/me", handlers.UpdateProfil)
+			terproteksi.PUT("/auth/change-password", handlers.ChangePassword)
 
 			// Dashboard pelanggan
-			terproteksi.GET("/dashboard", handlers.DashboardPelanggan)
+			terproteksi.GET("/dashboard", handlers.RingkasanDashboardPelanggan)
 
 			// Fitur pemesanan untuk pelanggan (Customer)
 			terproteksi.POST("/orders", middleware.WajibPelanggan(), handlers.BuatPesanan)
 			terproteksi.GET("/orders/my", handlers.RiwayatPesananSaya)
 			terproteksi.GET("/orders/:id", handlers.DetailPesanan)
+			terproteksi.POST("/orders/:id/payment", handlers.UnggahBuktiBayar)
+			terproteksi.POST("/orders/:id/refresh-token", handlers.RefreshSnapToken)
+			terproteksi.POST("/orders/:id/verify-payment", handlers.VerifikasiPembayaran)
 
 			// --- rute khusus administrator (Admin-Only) ---
 			adminGroup := terproteksi.Group("")
@@ -115,16 +140,34 @@ func main() {
 				adminGroup.PUT("/menus/:id", handlers.EditMenu)
 				adminGroup.DELETE("/menus/:id", handlers.HapusMenu)
 
+				// Manajemen kategori
+				adminGroup.GET("/categories", handlers.AmbilSemuaKategori)
+				adminGroup.GET("/categories/:id", handlers.AmbilDetailKategori)
+				adminGroup.POST("/categories", handlers.TambahKategori)
+				adminGroup.PUT("/categories/:id", handlers.EditKategori)
+				adminGroup.DELETE("/categories/:id", handlers.HapusKategori)
+
 				// Manajemen pesanan masuk
 				adminGroup.GET("/orders", handlers.AmbilSemuaPesanan)
 				adminGroup.PUT("/orders/:id/status", handlers.PerbaruiStatusPesanan)
-				adminGroup.PUT("/orders/:id/payment-status", handlers.PerbaruiStatusPembayaran)
 
 				// Manajemen promo
 				adminGroup.GET("/promo/admin", handlers.AmbilSemuaPromoAdmin)
 				adminGroup.POST("/promo", handlers.TambahPromo)
 				adminGroup.PUT("/promo/:id", handlers.EditPromo)
 				adminGroup.DELETE("/promo/:id", handlers.HapusPromo)
+
+				// Data pelanggan
+				adminGroup.GET("/users", handlers.AmbilSemuaPelanggan)
+				adminGroup.GET("/users/:id", handlers.AmbilDetailPelanggan)
+
+				// Pesan Pelanggan (Halaman Kontak)
+				adminGroup.GET("/pesan-pelanggan", handlers.AmbilSemuaPesanPelanggan)
+				adminGroup.PUT("/pesan-pelanggan/:id/balas", handlers.BalasPesanPelanggan)
+				adminGroup.DELETE("/pesan-pelanggan/:id", handlers.HapusPesanPelanggan)
+
+				// Dashboard ringkasan
+				adminGroup.GET("/reports/summary", handlers.RingkasanDashboard)
 
 				// Laporan penjualan
 				adminGroup.GET("/reports/sales", handlers.LaporanPenjualanJSON)
@@ -171,20 +214,48 @@ func seedDataDefault() {
 		hashPassword, _ := utils.HashPassword("pelangganvipizza")
 		customerDefault := models.Pengguna{
 			Nama:     "Budi Santoso",
-			Email:    "budi@gmail.com",
+			Email:    "budi@vipizza.com",
 			Password: hashPassword,
 			Peran:    "pelanggan",
 			Telepon:  "082345678901",
 			Alamat:   "Jl. Khatib Sulaiman No. 12, Padang Utara, Padang",
 		}
 		config.DB.Create(&customerDefault)
-		fmt.Println("[SEED] Berhasil menambahkan Pelanggan default (email: budi@gmail.com, pass: pelangganvipizza)")
+		fmt.Println("[SEED] Berhasil menambahkan Pelanggan default (email: budi@vipizza.com, pass: pelangganvipizza)")
+	} else {
+		// Update email pelanggan lama (budi@gmail.com -> budi@vipizza.com)
+		var customerLama models.Pengguna
+		result := config.DB.Where("peran = ? AND email = ?", "pelanggan", "budi@gmail.com").First(&customerLama)
+		if result.Error == nil {
+			config.DB.Model(&customerLama).Update("email", "budi@vipizza.com")
+			fmt.Println("[SEED] Memperbarui email pelanggan: budi@gmail.com -> budi@vipizza.com")
+		}
 	}
 
-	// 3. Seed data Menu default (Sesuai dengan Katalog Mockup Desain)
+	// 3. Seed data Kategori default
+	var hitungKategori int64
+	config.DB.Model(&models.Kategori{}).Count(&hitungKategori)
+	if hitungKategori == 0 {
+		kategoriList := []models.Kategori{
+			{Nama: "Pizza", Slug: "pizza", Deskripsi: "Berbagai pilihan pizza homemade Vipizza", Aktif: true},
+			{Nama: "Minuman", Slug: "minuman", Deskripsi: "Minuman segar pendamping pizza", Aktif: true},
+			{Nama: "Dessert", Slug: "dessert", Deskripsi: "Hidangan penutup manis dan lezat", Aktif: true},
+			{Nama: "Paket Hemat", Slug: "paket", Deskripsi: "Paket bundling pizza dengan harga spesial", Aktif: true},
+		}
+		for _, k := range kategoriList {
+			config.DB.Create(&k)
+		}
+		fmt.Println("[SEED] Berhasil menambahkan 4 Kategori menu ke database!")
+	}
+
+	// 4. Seed data Menu default (Sesuai dengan Katalog Mockup Desain)
 	var hitungMenu int64
 	config.DB.Model(&models.Menu{}).Count(&hitungMenu)
 	if hitungMenu == 0 {
+		// Ambil ID kategori pizza untuk relasi
+		var katPizza models.Kategori
+		config.DB.Where("slug = ?", "pizza").First(&katPizza)
+
 		menuList := []models.Menu{
 			{
 				Nama:      "Sosis Lovers Pizza",
@@ -192,6 +263,7 @@ func seedDataDefault() {
 				Harga:     35000,
 				Stok:      15,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -201,6 +273,7 @@ func seedDataDefault() {
 				Harga:     35000,
 				Stok:      12,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -210,6 +283,7 @@ func seedDataDefault() {
 				Harga:     35000,
 				Stok:      10,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -219,6 +293,7 @@ func seedDataDefault() {
 				Harga:     45000,
 				Stok:      8,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1573821663912-569905455b1c?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -228,6 +303,7 @@ func seedDataDefault() {
 				Harga:     50000,
 				Stok:      10,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -237,6 +313,7 @@ func seedDataDefault() {
 				Harga:     60000,
 				Stok:      12,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -246,6 +323,7 @@ func seedDataDefault() {
 				Harga:     60000,
 				Stok:      8,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -255,6 +333,7 @@ func seedDataDefault() {
 				Harga:     130000,
 				Stok:      5,
 				Kategori:  "pizza",
+				KategoriID: func() *uint { if katPizza.ID > 0 { return &katPizza.ID }; return nil }(),
 				GambarURL: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
 				Tersedia:  true,
 			},
@@ -266,3 +345,4 @@ func seedDataDefault() {
 		fmt.Println("[SEED] Berhasil menambahkan 8 Menu pizza resmi Vipizza ke database!")
 	}
 }
+

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Register() {
   const { register } = useAuth();
@@ -13,27 +14,37 @@ export default function Register() {
   const [konfirmasiPassword, setKonfirmasiPassword] = useState('');
   const [telepon, setTelepon] = useState('');
   const [alamat, setAlamat] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showKonfirmasiPassword, setShowKonfirmasiPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nama || !email || !password || !konfirmasiPassword || !telepon || !alamat) {
-      alert('Mohon isi seluruh data pendaftaran!');
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon isi seluruh data pendaftaran!' });
       return;
     }
 
     if (password !== konfirmasiPassword) {
-      alert('Password dan Konfirmasi Password tidak cocok!');
+      Swal.fire({ icon: 'warning', title: 'Password Beda', text: 'Password dan Konfirmasi Password tidak cocok!' });
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      register(nama, email, telepon, alamat, password);
+    try {
+      const userBaru = await register(nama, email, telepon, alamat, password);
+      if (!userBaru) {
+        Swal.fire({ icon: 'error', title: 'Registrasi Gagal', text: 'Gagal mendaftar di server. Coba lagi.' });
+        setLoading(false);
+        return;
+      }
       setLoading(false);
-      alert('Registrasi berhasil! Selamat datang di Vipizza.');
-      navigate('/menu');
-    }, 1000);
+      Swal.fire({ icon: 'success', title: 'Registrasi Berhasil', text: 'Selamat datang di Vipizza!', timer: 2000, showConfirmButton: false });
+      navigate('/dashboard');
+    } catch {
+      setLoading(false);
+      Swal.fire({ icon: 'error', title: 'Registrasi Gagal', text: 'Terjadi kesalahan. Pastikan password minimal 6 karakter.' });
+    }
   };
 
   return (
@@ -63,11 +74,41 @@ export default function Register() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-sm font-medium text-[#212529] block mb-1">Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-bs" required />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-bs pr-10 w-full"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium text-[#212529] block mb-1">Konfirmasi Password</label>
-              <input type="password" value={konfirmasiPassword} onChange={(e) => setKonfirmasiPassword(e.target.value)} className="input-bs" required />
+              <div className="relative">
+                <input
+                  type={showKonfirmasiPassword ? 'text' : 'password'}
+                  value={konfirmasiPassword}
+                  onChange={(e) => setKonfirmasiPassword(e.target.value)}
+                  className="input-bs pr-10 w-full"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKonfirmasiPassword(!showKonfirmasiPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
+                >
+                  {showKonfirmasiPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
 

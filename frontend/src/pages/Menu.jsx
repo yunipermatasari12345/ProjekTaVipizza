@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import PageHero from '../components/layout/PageHero';
-import { Search, ShoppingCart, X, Minus, Plus } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUrl';
+import { Search, ShoppingCart, X, Minus, Plus, Star } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Menu() {
   const { tambahKeKeranjang } = useCart();
@@ -24,29 +26,14 @@ export default function Menu() {
     setKategoriAktif(kategoriUrl);
   }, [kategoriUrl]);
 
-  // Helper untuk hitung harga berdasarkan ukuran dari brosur resmi
+  // Helper untuk hitung harga berdasarkan ukuran dari data API
   const hitungHargaUkuran = (menu, ukuran) => {
-    if (!menu || !menu.nama) return 0;
-    if (menu.nama.includes("1/2 Meter")) {
-      return 130000;
+    if (!menu) return 0;
+    if (menu.nama && menu.nama.includes("1/2 Meter")) {
+      return menu.harga_large || menu.harga || 130000;
     }
-    
-    const mappingHarga = {
-      "Sosis Lovers Pizza": { Medium: 35000, Large: 50000 },
-      "Beef Slice Pizza": { Medium: 35000, Large: 50000 },
-      "Abon Sapi Pizza": { Medium: 35000, Large: 50000 },
-      "Cheese Corn Moza Pizza": { Medium: 45000, Large: 60000 },
-      "Beef Burger Moza Pizza": { Medium: 50000, Large: 70000 },
-      "Chicken Mushroom Moza": { Medium: 60000, Large: 80000 },
-      "Combo Mix Special Pizza": { Medium: 60000, Large: 80000 }
-    };
-
-    const namaAman = menu.nama;
-    const hargaAsli = typeof menu.harga === 'number' ? menu.harga : parseInt(menu.harga) || 35000;
-
-    const configHarga = mappingHarga[namaAman] || { Medium: hargaAsli, Large: hargaAsli + 15000 };
-    const hasil = ukuran === 'Large' ? configHarga.Large : configHarga.Medium;
-    return typeof hasil === 'number' && !isNaN(hasil) ? hasil : hargaAsli;
+    if (ukuran === 'Large') return menu.harga_large || menu.harga_medium + 15000 || menu.harga + 15000;
+    return menu.harga_medium || menu.harga || 35000;
   };
 
   const handleBukaDetail = (menu) => {
@@ -81,12 +68,19 @@ export default function Menu() {
       if (langsungCheckout) {
         window.location.href = "/keranjang";
       } else {
-        alert(`${namaFinal} berhasil ditambahkan ke keranjang! 🍕🛒`);
+        Swal.fire({
+          title: 'Berhasil!',
+          text: `${namaFinal} berhasil ditambahkan ke keranjang! 🍕🛒`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
       }
     }
   };
 
   const [semuaMenu, setSemuaMenu] = useState([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
 
   useEffect(() => {
     const defaultPizzaMenus = [
@@ -94,101 +88,83 @@ export default function Menu() {
         id: 1,
         nama: "Sosis Lovers Pizza",
         deskripsi: "Pizza lezat dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, sosis sapi/ayam, dan oregano.",
-        harga: 35000,
-        stok: 15,
-        kategori: "pizza",
+        harga: 35000, harga_medium: 35000, harga_large: 50000,
+        stok: 15, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
-        rating: 4.8,
-        ulasan: 120,
-        tersedia: true
+        rating: 4.8, ulasan: 120, tersedia: true
       },
       {
-        id: 2,
-        nama: "Beef Slice Pizza",
+        id: 2, nama: "Beef Slice Pizza",
         deskripsi: "Pizza gurih dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, beef slice melimpah, dan oregano.",
-        harga: 35000,
-        stok: 12,
-        kategori: "pizza",
+        harga: 35000, harga_medium: 35000, harga_large: 50000,
+        stok: 12, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
-        rating: 4.9,
-        ulasan: 340,
-        tersedia: true
+        rating: 4.9, ulasan: 340, tersedia: true
       },
       {
-        id: 3,
-        nama: "Abon Sapi Pizza",
+        id: 3, nama: "Abon Sapi Pizza",
         deskripsi: "Pizza unik nusantara dengan saos tomat, mayo, jagung manis, bombai, keju cheddar, abon sapi premium, dan oregano.",
-        harga: 35000,
-        stok: 10,
-        kategori: "pizza",
+        harga: 35000, harga_medium: 35000, harga_large: 50000,
+        stok: 10, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&q=80&w=300",
-        rating: 4.7,
-        ulasan: 95,
-        tersedia: true
+        rating: 4.7, ulasan: 95, tersedia: true
       },
       {
-        id: 4,
-        nama: "Cheese Corn Moza Pizza",
+        id: 4, nama: "Cheese Corn Moza Pizza",
         deskripsi: "Perpaduan manis gurih saos tomat/sambal, mayo, SKM vanilla, jagung manis, keju cheddar, Moza lumer, dan oregano.",
-        harga: 45000,
-        stok: 8,
-        kategori: "pizza",
+        harga: 45000, harga_medium: 45000, harga_large: 60000,
+        stok: 8, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1573821663912-569905455b1c?auto=format&fit=crop&q=80&w=300",
-        rating: 4.6,
-        ulasan: 80,
-        tersedia: true
+        rating: 4.6, ulasan: 80, tersedia: true
       },
       {
-        id: 5,
-        nama: "Beef Burger Moza Pizza",
+        id: 5, nama: "Beef Burger Moza Pizza",
         deskripsi: "Kenikmatan ekstra saos tomat/sambal, mayo, jagung, bombai, keju cheddar, mozzarella lumer, dan beef burger tumis bumbu.",
-        harga: 50000,
-        stok: 10,
-        kategori: "pizza",
+        harga: 50000, harga_medium: 50000, harga_large: 70000,
+        stok: 10, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&q=80&w=300",
-        rating: 4.7,
-        ulasan: 150,
-        tersedia: true
+        rating: 4.7, ulasan: 150, tersedia: true
       },
       {
-        id: 6,
-        nama: "Chicken Mushroom Moza",
+        id: 6, nama: "Chicken Mushroom Moza",
         deskripsi: "Pizza spesial dengan saos tomat/sambal, mayo, jagung, bombai, keju cheddar, mozzarella, dan tumisan daging ayam jamur gurih.",
-        harga: 60000,
-        stok: 12,
-        kategori: "pizza",
+        harga: 60000, harga_medium: 60000, harga_large: 80000,
+        stok: 12, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=300",
-        rating: 4.5,
-        ulasan: 75,
-        tersedia: true
+        rating: 4.5, ulasan: 75, tersedia: true
       },
       {
-        id: 7,
-        nama: "Combo Mix Special Pizza",
+        id: 7, nama: "Combo Mix Special Pizza",
         deskripsi: "Paket komplit saos tomat/sambal, mayo, jagung, bombai, keju cheddar, Moza, sosis sapi, sosis ayam, dan beef slice premium.",
-        harga: 60000,
-        stok: 8,
-        kategori: "pizza",
+        harga: 60000, harga_medium: 60000, harga_large: 80000,
+        stok: 8, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300",
-        rating: 4.8,
-        ulasan: 110,
-        tersedia: true
+        rating: 4.8, ulasan: 110, tersedia: true
       },
       {
-        id: 8,
-        nama: "Pizza 1/2 Meter (Raksasa)",
+        id: 8, nama: "Pizza 1/2 Meter (Raksasa)",
         deskripsi: "Pizza raksasa 1/2 meter dengan kombinasi topping spesial Sosis Lovers mix Beef Burger Moza. Sempurna untuk pesta!",
-        harga: 130000,
-        stok: 5,
-        kategori: "pizza",
+        harga: 130000, harga_medium: 130000, harga_large: 130000,
+        stok: 5, kategori: "pizza",
         gambar_url: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&q=80&w=300",
-        rating: 4.9,
-        ulasan: 220,
-        tersedia: true
+        rating: 4.9, ulasan: 220, tersedia: true
       }
     ];
 
-    // Jalankan sinkronisasi dengan Go REST API (MySQL)
+    // STEP 1: Tampilkan cache localStorage DULU (instan, tanpa tunggu API)
+    const cacheStr = localStorage.getItem('vipizza_menu_mock');
+    if (cacheStr) {
+      try {
+        const cache = JSON.parse(cacheStr);
+        const isOldMock = cache.some(m => m.nama === "Margherita Pizza" || m.nama === "Tuna Pizza" || m.kategori === "side" || m.kategori === "drink");
+        if (Array.isArray(cache) && cache.length > 0 && !isOldMock) {
+          setSemuaMenu(cache.filter(m => m.kategori === 'pizza'));
+          setLoadingMenu(false); // Cache sudah cukup, tampilkan dulu
+        }
+      } catch { /* ignore */ }
+    }
+
+    // STEP 2: Fetch dari API di background, update jika berhasil
     fetch('http://localhost:8080/api/menus')
       .then(res => {
         if (!res.ok) throw new Error("Gagal load API");
@@ -196,28 +172,26 @@ export default function Menu() {
       })
       .then(data => {
         if (data && Array.isArray(data) && data.length > 0) {
-          // Khusus pizza saja
           const dataPizza = data.filter(m => m.kategori === 'pizza');
           setSemuaMenu(dataPizza);
+          setLoadingMenu(false);
           localStorage.setItem('vipizza_menu_mock', JSON.stringify(data));
         } else {
-          loadDariLokal();
+          muat_default();
         }
       })
       .catch(() => {
-        loadDariLokal();
+        muat_default();
       });
 
-    function loadDariLokal() {
-      const databaseMenu = JSON.parse(localStorage.getItem('vipizza_menu_mock') || '[]');
-      const isOldMock = databaseMenu.some(m => m.nama === "Margherita Pizza" || m.nama === "Tuna Pizza" || m.nama === "Meat Lovers Pizza" || m.nama === "Jagung" || m.kategori === "side" || m.kategori === "drink");
-
-      if (databaseMenu.length === 0 || isOldMock) {
+    function muat_default() {
+      // Hanya pakai default jika belum ada data tampil
+      setSemuaMenu(prev => {
+        if (prev.length > 0) return prev; // sudah ada cache, biarkan
         localStorage.setItem('vipizza_menu_mock', JSON.stringify(defaultPizzaMenus));
-        setSemuaMenu(defaultPizzaMenus);
-      } else {
-        setSemuaMenu(databaseMenu.filter(m => m.kategori === 'pizza'));
-      }
+        return defaultPizzaMenus;
+      });
+      setLoadingMenu(false);
     }
   }, []);
 
@@ -235,16 +209,15 @@ export default function Menu() {
 
   return (
     <div>
-      <PageHero
-        title="Menu Pizza"
-        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Menu' }]}
-      />
 
       <div className="py-10 bg-[#f8f9fa]">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="section-heading">
-            <h2>Pilihan Menu Pizza</h2>
-            <p className="text-[#6c757d] text-sm mt-2">Pizza homemade dipanggang segar, siap antar ke Kota Padang</p>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="mb-12 max-w-xs mx-auto w-full rounded-2xl overflow-hidden shadow-xl border-4 border-white">
+            <img 
+              src="/panduan-ukuran.jpeg" 
+              alt="Panduan Ukuran Vipizza" 
+              className="w-full h-auto object-contain"
+            />
           </div>
 
           <div className="mb-8 max-w-sm relative">
@@ -253,13 +226,29 @@ export default function Menu() {
               placeholder="Cari pizza favorit..."
               value={pencarian}
               onChange={(e) => setPencarian(e.target.value)}
-              className="input-bs pl-10"
+              className="input-bs !pl-10"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c757d]" />
           </div>
 
-      {menuTerfilter.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {loadingMenu && semuaMenu.length === 0 ? (
+        /* === SKELETON LOADING CARDS === */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="card-bs overflow-hidden flex flex-col animate-pulse">
+              <div className="h-56 bg-gray-200 rounded-t-xl" />
+              <div className="p-4 flex flex-col gap-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-full" />
+                <div className="h-3 bg-gray-100 rounded w-2/3" />
+                <div className="h-5 bg-gray-200 rounded w-1/3 mt-1" />
+                <div className="h-9 bg-gray-200 rounded-lg mt-1" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : menuTerfilter.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {menuTerfilter.map((menu) => {
             const habis = menu.stok === 0;
             return (
@@ -274,18 +263,30 @@ export default function Menu() {
                 )}
 
                 <div
-                  className="h-44 overflow-hidden cursor-pointer"
+                  className="h-56 overflow-hidden cursor-pointer"
                   onClick={() => { if (!habis) handleBukaDetail(menu); }}
                 >
                   <img
-                    src={menu.gambar_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300'}
+                    src={getImageUrl(menu.gambar_url) || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300'}
                     alt={menu.nama}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                   />
                 </div>
 
                 <div className="p-4 flex flex-col flex-1">
                   <h3 className="font-bold text-[#212529] text-base mb-1">{menu.nama}</h3>
+                  
+                  {/* Rating Visual Dinamis (berdasarkan ID agar konsisten) */}
+                  <div className="flex items-center gap-1 mb-2">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span className="text-xs font-bold text-slate-700">
+                      {(4.5 + (menu.id % 6) * 0.1).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      ({120 + (menu.id * 17) % 300})
+                    </span>
+                  </div>
+
                   <p className="text-[#6c757d] text-xs leading-relaxed line-clamp-2 mb-2 flex-1">
                     {menu.deskripsi}
                   </p>
@@ -349,11 +350,11 @@ export default function Menu() {
               
               {/* Info Pizza Row */}
               <div className="flex gap-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shrink-0 bg-slate-50">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shrink-0">
                   <img 
-                    src={menuDetail.gambar_url || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300"} 
+                    src={getImageUrl(menuDetail.gambar_url) || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300"} 
                     alt={menuDetail.nama} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300";

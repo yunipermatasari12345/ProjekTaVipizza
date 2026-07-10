@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"vipizza/config"
@@ -22,23 +24,16 @@ type ItemCheckoutRequest struct {
 
 // CheckoutRequest mewakili data checkout pesanan pelanggan
 type CheckoutRequest struct {
-	NamaPenerima     string                `json:"nama_penerima"`
 	AlamatPengiriman string                `json:"alamat_pengiriman" binding:"required"`
 	Telepon          string                `json:"telepon" binding:"required"`
-	Catatan          string                `json:"catatan"`
-	MetodePembayaran string                `json:"metode_pembayaran" binding:"required"`
-	KodePromo        string                `json:"kode_promo"`
+	MetodePembayaran string                `json:"metode_pembayaran" binding:"required"` // 'transfer_bank', 'qris'
+	KodePromo        string                `json:"kode_promo"`                           // Opsional
 	Items            []ItemCheckoutRequest `json:"items" binding:"required,gt=0"`
 }
 
 // StatusUpdateRequest mewakili input perubahan status pesanan oleh admin
 type StatusUpdateRequest struct {
 	Status string `json:"status" binding:"required"`
-}
-
-// PaymentStatusUpdateRequest mewakili input perubahan status pembayaran oleh admin
-type PaymentStatusUpdateRequest struct {
-	StatusPembayaran string `json:"status_pembayaran" binding:"required"`
 }
 
 // BuatPesanan menangani proses checkout pesanan pelanggan (Customer-Only)
@@ -60,18 +55,21 @@ func BuatPesanan(c *gin.Context) {
 
 	for _, itemReq := range req.Items {
 		var menu models.Menu
+		// Ambil menu dan kunci baris untuk update stok aman
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&menu, itemReq.MenuID).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Menu dengan ID %d tidak ditemukan", itemReq.MenuID)})
 			return
 		}
 
+		// Cek ketersediaan stok
 		if menu.Stok < itemReq.Jumlah {
 			tx.Rollback()
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Stok tidak mencukupi untuk menu '%s'. Stok tersedia: %d", menu.Nama, menu.Stok)})
 			return
 		}
 
+		// Kurangi stok menu
 		menu.Stok -= itemReq.Jumlah
 		menu.Tersedia = menu.Stok > 0
 		if err := tx.Save(&menu).Error; err != nil {
@@ -80,14 +78,16 @@ func BuatPesanan(c *gin.Context) {
 			return
 		}
 
+		// Hitung subtotal dan buat item pesanan
 		subtotal := menu.Harga * itemReq.Jumlah
 		totalHarga += subtotal
 
-		itemsPesanan = append(itemsPesanan, models.ItemPesanan{
+		itemPesanan := models.ItemPesanan{
 			MenuID: itemReq.MenuID,
 			Jumlah: itemReq.Jumlah,
-			Harga:  menu.Harga,
-		})
+			Harga:  menu.Harga, // Catat harga historis
+		}
+		itemsPesanan = append(itemsPesanan, itemPesanan)
 	}
 
 	// Validasi dan hitung diskon Promo
@@ -101,32 +101,25 @@ func BuatPesanan(c *gin.Context) {
 		}
 	}
 
-	totalDiskon := (totalHarga * diskonPersen) / 100
-	totalSetelahDiskon := totalHarga - totalDiskon
-
-	// Tentukan status awal berdasarkan metode pembayaran
-	statusAwal := "menunggu_pembayaran"
-	statusPembayaranAwal := "belum_dibayar"
-
-	if req.MetodePembayaran == "tunai" {
-		statusAwal = "diproses"
+	ongkosKirim := 10000
+	if totalHarga <= 0 {
+		ongkosKirim = 0
 	}
+	totalDiskon := (totalHarga * diskonPersen) / 100
+	totalSetelahDiskon := totalHarga - totalDiskon + ongkosKirim
 
 	// Buat pesanan baru
 	pesananBaru := models.Pesanan{
-		PenggunaID:        userID,
-		NamaPenerima:      req.NamaPenerima,
-		TanggalPesanan:    time.Now(),
-		TotalHarga:        totalSetelahDiskon,
-		Status:            statusAwal,
-		StatusPembayaran:  statusPembayaranAwal,
-		AlamatPengiriman:  req.AlamatPengiriman,
-		Telepon:           req.Telepon,
-		Catatan:           req.Catatan,
-		MetodePembayaran:  req.MetodePembayaran,
-		KodePromo:         req.KodePromo,
-		Diskon:            diskonPersen,
-		ItemPesanan:       itemsPesanan,
+		PenggunaID:       userID,
+		TanggalPesanan:   time.Now(),
+		TotalHarga:       totalSetelahDiskon,
+		Status:           "menunggu_pembayaran",
+		AlamatPengiriman: req.AlamatPengiriman,
+		Telepon:          req.Telepon,
+		MetodePembayaran: req.MetodePembayaran,
+		KodePromo:        req.KodePromo,
+		Diskon:           diskonPersen,
+		ItemPesanan:      itemsPesanan,
 	}
 
 	if err := tx.Create(&pesananBaru).Error; err != nil {
@@ -139,6 +132,7 @@ func BuatPesanan(c *gin.Context) {
 	if pesananBaru.MetodePembayaran == "midtrans" {
 		orderIDStr := fmt.Sprintf("VIPZ-%d-%d", pesananBaru.ID, time.Now().Unix())
 
+		// Siapkan rincian item untuk Midtrans
 		var snapItems []midtrans.ItemDetails
 		for _, item := range pesananBaru.ItemPesanan {
 			var m models.Menu
@@ -151,6 +145,25 @@ func BuatPesanan(c *gin.Context) {
 			})
 		}
 
+		// Tambah ongkos kirim sebagai item
+		snapItems = append(snapItems, midtrans.ItemDetails{
+			ID:    "SHIPPING",
+			Price: int64(ongkosKirim),
+			Qty:   1,
+			Name:  "Ongkos Kirim (Padang)",
+		})
+
+		// Tambah diskon sebagai item negatif
+		if totalDiskon > 0 {
+			snapItems = append(snapItems, midtrans.ItemDetails{
+				ID:    "DISCOUNT",
+				Price: int64(-totalDiskon),
+				Qty:   1,
+				Name:  fmt.Sprintf("Diskon Promo %d%%", diskonPersen),
+			})
+		}
+
+		// Ambil data pelanggan
 		var peng models.Pengguna
 		tx.First(&peng, userID)
 
@@ -174,8 +187,9 @@ func BuatPesanan(c *gin.Context) {
 			return
 		}
 
+		// Simpan Token
 		pesananBaru.SnapToken = snapResp.Token
-		pesananBaru.MidtransID = orderIDStr
+		pesananBaru.MidtransID = orderIDStr // Simpan custom order ID
 		if err := tx.Save(&pesananBaru).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan token pembayaran"})
@@ -183,11 +197,13 @@ func BuatPesanan(c *gin.Context) {
 		}
 	}
 
+	// Selesaikan transaksi
 	tx.Commit()
 
+	// Muat ulang pesanan lengkap dengan relasi untuk notifikasi WA
 	config.DB.Preload("ItemPesanan.Menu").Preload("Pengguna").First(&pesananBaru, pesananBaru.ID)
 
-	// Kirim notifikasi WhatsApp ke admin (async)
+	// Kirim notifikasi WhatsApp ke admin (async, tidak menghambat response API)
 	go func(p models.Pesanan) {
 		var barisMenu []string
 		for _, item := range p.ItemPesanan {
@@ -205,51 +221,10 @@ func BuatPesanan(c *gin.Context) {
 	}(pesananBaru)
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":           "Pesanan berhasil dibuat!",
-		"pesanan_id":        pesananBaru.ID,
-		"total":             pesananBaru.TotalHarga,
-		"status":            pesananBaru.Status,
-		"status_pembayaran": pesananBaru.StatusPembayaran,
-		"snap_token":        pesananBaru.SnapToken,
-	})
-}
-
-// DashboardPelanggan mengembalikan ringkasan data untuk dashboard pelanggan
-func DashboardPelanggan(c *gin.Context) {
-	userIDVal, _ := c.Get("userID")
-	userID := userIDVal.(uint)
-
-	var totalPesanan int64
-	var pesananDiproses int64
-	var pesananSelesai int64
-	var pesananDibatalkan int64
-
-	config.DB.Model(&models.Pesanan{}).Where("pengguna_id = ?", userID).Count(&totalPesanan)
-	config.DB.Model(&models.Pesanan{}).Where("pengguna_id = ? AND status IN ?", userID, []string{"diproses", "sedang_diantar"}).Count(&pesananDiproses)
-	config.DB.Model(&models.Pesanan{}).Where("pengguna_id = ? AND status = ?", userID, "selesai").Count(&pesananSelesai)
-	config.DB.Model(&models.Pesanan{}).Where("pengguna_id = ? AND status = ?", userID, "dibatalkan").Count(&pesananDibatalkan)
-
-	var pesananTerbaru []models.Pesanan
-	config.DB.Preload("ItemPesanan.Menu").Where("pengguna_id = ?", userID).Order("id desc").Limit(5).Find(&pesananTerbaru)
-
-	var user models.Pengguna
-	config.DB.First(&user, userID)
-
-	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":      user.ID,
-			"nama":    user.Nama,
-			"email":   user.Email,
-			"telepon": user.Telepon,
-			"alamat":  user.Alamat,
-		},
-		"ringkasan": gin.H{
-			"total_pesanan":   totalPesanan,
-			"pesanan_diproses": pesananDiproses,
-			"pesanan_selesai":  pesananSelesai,
-			"pesanan_dibatalkan": pesananDibatalkan,
-		},
-		"pesanan_terbaru": pesananTerbaru,
+		"message":    "Pesanan berhasil dibuat!",
+		"pesanan_id": pesananBaru.ID,
+		"total":      pesananBaru.TotalHarga,
+		"snap_token": pesananBaru.SnapToken,
 	})
 }
 
@@ -307,6 +282,89 @@ func DetailPesanan(c *gin.Context) {
 	c.JSON(http.StatusOK, pesanan)
 }
 
+// UnggahBuktiBayar mengunggah bukti transfer bank atau QRIS (Customer-Only)
+func UnggahBuktiBayar(c *gin.Context) {
+	id := c.Param("id")
+	userIDVal, _ := c.Get("userID")
+	userID := userIDVal.(uint)
+
+	var pesanan models.Pesanan
+	if err := config.DB.First(&pesanan, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
+		return
+	}
+
+	// Pastikan hanya pemilik pesanan yang bisa mengunggah bukti
+	if pesanan.PenggunaID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses dilarang! Ini bukan pesanan Anda"})
+		return
+	}
+
+	// Pastikan pesanan sedang menunggu pembayaran
+	if pesanan.Status != "menunggu_pembayaran" && pesanan.Status != "menunggu_validasi" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pesanan tidak berada pada status pembayaran aktif"})
+		return
+	}
+
+	file, err := c.FormFile("bukti")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File bukti transfer wajib diunggah"})
+		return
+	}
+
+	// Ambil data tambahan dari form (nama bank & pengirim)
+	namaBank := c.PostForm("nama_bank")
+	namaPengirim := c.PostForm("nama_pengirim")
+
+	dirUpload := "uploads/payments"
+	_ = os.MkdirAll(dirUpload, os.ModePerm)
+
+	// Buat nama file unik
+	namaFile := fmt.Sprintf("pay_%d_%s", time.Now().Unix(), filepath.Base(file.Filename))
+	pathFile := filepath.Join(dirUpload, namaFile)
+
+	if err := c.SaveUploadedFile(file, pathFile); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file bukti pembayaran"})
+		return
+	}
+
+	// Hapus file bukti pembayaran lama jika ada
+	if pesanan.BuktiPembayaran != "" {
+		_ = os.Remove(filepath.Join(".", pesanan.BuktiPembayaran))
+	}
+
+	// Perbarui status pesanan menjadi menunggu validasi admin
+	pesanan.BuktiPembayaran = "/uploads/payments/" + namaFile
+	pesanan.Status = "menunggu_validasi"
+	if namaBank != "" {
+		pesanan.NamaBank = namaBank
+	}
+	if namaPengirim != "" {
+		pesanan.NamaPengirim = namaPengirim
+	}
+
+	if err := config.DB.Save(&pesanan).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status transaksi"})
+		return
+	}
+
+	// Kirim notifikasi WhatsApp ke admin bahwa bukti bayar sudah masuk
+	go func(p models.Pesanan) {
+		var pengguna models.Pengguna
+		config.DB.First(&pengguna, p.PenggunaID)
+		namaPelanggan := pengguna.Nama
+		if namaPelanggan == "" {
+			namaPelanggan = p.Telepon
+		}
+		utils.NotifikasiBuktiBayar(p.ID, namaPelanggan, p.MetodePembayaran, p.TotalHarga)
+	}(pesanan)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":              "Bukti pembayaran berhasil diunggah! Mohon tunggu konfirmasi admin.",
+		"bukti_pembayaran_url": pesanan.BuktiPembayaran,
+	})
+}
+
 // AmbilSemuaPesanan menampilkan semua pesanan masuk (Khusus Admin)
 func AmbilSemuaPesanan(c *gin.Context) {
 	var daftarPesanan []models.Pesanan
@@ -344,10 +402,12 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 	statusLama := pesanan.Status
 	statusBaru := req.Status
 
+	// List status valid
 	statusValid := map[string]bool{
 		"menunggu_pembayaran": true,
+		"menunggu_validasi":   true,
 		"diproses":            true,
-		"sedang_diantar":      true,
+		"dikirim":             true,
 		"selesai":             true,
 		"dibatalkan":          true,
 	}
@@ -359,6 +419,9 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 
 	tx := config.DB.Begin()
 
+	// Jika status diubah ke 'dibatalkan' dan status sebelumnya belum dibatalkan/menunggu_pembayaran (tanpa pengurangan stok?)
+	// Sebenarnya karena kita mengurangi stok pas checkout (status: menunggu_pembayaran),
+	// maka jika dibatalkan, kita HARUS mengembalikan stok menu.
 	if statusBaru == "dibatalkan" && statusLama != "dibatalkan" {
 		for _, item := range pesanan.ItemPesanan {
 			var menu models.Menu
@@ -370,12 +433,18 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 		}
 	}
 
-	// Jika status berubah ke "selesai" untuk metode tunai, ubah status pembayaran menjadi lunas
-	if statusBaru == "selesai" && pesanan.MetodePembayaran == "tunai" {
-		pesanan.StatusPembayaran = "lunas"
-	}
+	// Jika status diubah KELUAR dari dibatalkan (misal admin tidak sengaja klik batalkan lalu kembalikan),
+	// maka kita harus kurangi stok lagi. Namun skenario ini jarang dan bisa diabaikan agar tidak over-complicate.
 
 	pesanan.Status = statusBaru
+	
+	// Sinkronisasi status pembayaran secara otomatis
+	if statusBaru == "diproses" || statusBaru == "dikirim" || statusBaru == "selesai" {
+		pesanan.StatusPembayaran = "lunas"
+	} else if statusBaru == "dibatalkan" {
+		pesanan.StatusPembayaran = "gagal"
+	}
+
 	if err := tx.Save(&pesanan).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status pesanan"})
@@ -385,76 +454,104 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 	tx.Commit()
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":           fmt.Sprintf("Status pesanan #%d berhasil diperbarui menjadi '%s'!", pesanan.ID, statusBaru),
-		"pesanan":           pesanan,
-		"status_pembayaran": pesanan.StatusPembayaran,
+		"message": fmt.Sprintf("Status pesanan #%d berhasil diperbarui menjadi '%s'!", pesanan.ID, statusBaru),
+		"pesanan": pesanan,
 	})
 }
 
-// PerbaruiStatusPembayaran mengubah status pembayaran (Khusus Admin)
-func PerbaruiStatusPembayaran(c *gin.Context) {
+// RefreshSnapToken membuat ulang snap token Midtrans untuk pesanan yang tokennya sudah kadaluarsa
+func RefreshSnapToken(c *gin.Context) {
 	id := c.Param("id")
-	var pesanan models.Pesanan
+	userIDVal, _ := c.Get("userID")
+	userID := userIDVal.(uint)
 
-	if err := config.DB.First(&pesanan, id).Error; err != nil {
+	var pesanan models.Pesanan
+	if err := config.DB.Preload("ItemPesanan.Menu").First(&pesanan, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
 		return
 	}
 
-	var req PaymentStatusUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status pembayaran wajib dikirim"})
+	// Hanya pemilik pesanan yang bisa refresh token
+	if pesanan.PenggunaID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses dilarang! Ini bukan pesanan Anda"})
 		return
 	}
 
-	if req.StatusPembayaran != "belum_dibayar" && req.StatusPembayaran != "lunas" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status pembayaran harus 'belum_dibayar' atau 'lunas'"})
+	// Hanya bisa refresh jika pesanan masih menunggu pembayaran
+	if pesanan.Status != "menunggu_pembayaran" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pesanan ini sudah tidak dalam status menunggu pembayaran"})
 		return
 	}
 
-	pesanan.StatusPembayaran = req.StatusPembayaran
+	// Hanya untuk pesanan Midtrans
+	if pesanan.MetodePembayaran != "midtrans" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pesanan ini tidak menggunakan metode Midtrans"})
+		return
+	}
+
+	// Buat order ID baru yang unik (pakai timestamp baru)
+	orderIDStr := fmt.Sprintf("VIPZ-%d-%d", pesanan.ID, time.Now().Unix())
+
+	// Siapkan item detail untuk Midtrans
+	var snapItems []midtrans.ItemDetails
+	for _, item := range pesanan.ItemPesanan {
+		namaMenu := "Menu Pizza"
+		if item.Menu.Nama != "" {
+			namaMenu = item.Menu.Nama
+		}
+		snapItems = append(snapItems, midtrans.ItemDetails{
+			ID:    fmt.Sprintf("MENU-%d", item.MenuID),
+			Price: int64(item.Harga),
+			Qty:   int32(item.Jumlah),
+			Name:  namaMenu,
+		})
+	}
+
+	// Ambil data pelanggan
+	var peng models.Pengguna
+	config.DB.First(&peng, userID)
+
+	snapReq := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  orderIDStr,
+			GrossAmt: int64(pesanan.TotalHarga),
+		},
+		Items: &snapItems,
+		CustomerDetail: &midtrans.CustomerDetails{
+			FName: peng.Nama,
+			Email: peng.Email,
+			Phone: pesanan.Telepon,
+		},
+	}
+
+	snapResp, errSnap := config.SnapClient.CreateTransaction(snapReq)
+	if errSnap != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat ulang token Midtrans: " + errSnap.GetMessage()})
+		return
+	}
+
+	// Perbarui snap_token dan midtrans_id di database
+	pesanan.SnapToken = snapResp.Token
+	pesanan.MidtransID = orderIDStr
 	if err := config.DB.Save(&pesanan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status pembayaran"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan token baru ke database"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":           fmt.Sprintf("Status pembayaran pesanan #%d berhasil diperbarui menjadi '%s'!", pesanan.ID, req.StatusPembayaran),
-		"status_pembayaran": pesanan.StatusPembayaran,
+		"message":    "Token pembayaran berhasil diperbarui!",
+		"snap_token": snapResp.Token,
 	})
 }
 
-// MidtransNotification menangani webhook dari Midtrans saat status pembayaran berubah
-func MidtransNotification(c *gin.Context) {
-	var notificationPayload map[string]interface{}
-	if err := c.ShouldBindJSON(&notificationPayload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format payload tidak valid"})
-		return
-	}
-
-	orderId, exists := notificationPayload["order_id"].(string)
-	if !exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id tidak ditemukan"})
-		return
-	}
-
-	// Cek status ke Midtrans CoreAPI menggunakan orderId
-	transactionStatusResp, err := config.CoreAPIClient.CheckTransaction(orderId)
+// prosesStatusDariMidtrans memperbarui status pesanan berdasarkan response Midtrans
+func prosesStatusDariMidtrans(pesanan *models.Pesanan) {
+	transactionStatusResp, err := config.CoreAPIClient.CheckTransaction(pesanan.MidtransID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengecek status ke Midtrans"})
 		return
 	}
 
-	var pesanan models.Pesanan
-	// orderId bentuknya VIPZ-{ID}-{Timestamp}
-	if err := config.DB.Where("midtrans_id = ?", orderId).First(&pesanan).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
-		return
-	}
-
-	// Jika status sudah selesai atau dibatalkan sebelumnya, biarkan saja
-	if pesanan.Status == "selesai" || pesanan.Status == "dibatalkan" {
-		c.JSON(http.StatusOK, gin.H{"message": "Status sudah final, diabaikan"})
+	if pesanan.Status == "dikirim" || pesanan.Status == "selesai" || pesanan.Status == "dibatalkan" {
 		return
 	}
 
@@ -462,25 +559,18 @@ func MidtransNotification(c *gin.Context) {
 	fraudStatus := transactionStatusResp.FraudStatus
 
 	var newStatus string
-	var newPaymentStatus string
-
 	if statusTrans == "capture" {
 		if fraudStatus == "challenge" {
-			newStatus = "menunggu_pembayaran"
-			newPaymentStatus = "belum_dibayar"
+			newStatus = "menunggu_validasi"
 		} else if fraudStatus == "accept" {
 			newStatus = "diproses"
-			newPaymentStatus = "lunas"
 		}
 	} else if statusTrans == "settlement" {
 		newStatus = "diproses"
-		newPaymentStatus = "lunas"
 	} else if statusTrans == "cancel" || statusTrans == "deny" || statusTrans == "expire" {
 		newStatus = "dibatalkan"
-		newPaymentStatus = "belum_dibayar"
 	} else if statusTrans == "pending" {
 		newStatus = "menunggu_pembayaran"
-		newPaymentStatus = "belum_dibayar"
 	}
 
 	if newStatus != "" && newStatus != pesanan.Status {
@@ -500,15 +590,76 @@ func MidtransNotification(c *gin.Context) {
 		}
 
 		pesanan.Status = newStatus
-		if newPaymentStatus != "" {
-			pesanan.StatusPembayaran = newPaymentStatus
+		if newStatus == "diproses" {
+			pesanan.StatusPembayaran = "lunas"
+		} else if newStatus == "dibatalkan" {
+			pesanan.StatusPembayaran = "gagal"
 		}
-		config.DB.Save(&pesanan)
+		config.DB.Save(pesanan)
 
 		if newStatus == "diproses" {
 			go utils.NotifikasiBuktiBayar(pesanan.ID, "Midtrans Auto-Confirm", "Midtrans Payment", pesanan.TotalHarga)
 		}
+	} else if statusTrans == "settlement" && pesanan.Status == "diproses" {
+		pesanan.StatusPembayaran = "lunas"
+		config.DB.Save(pesanan)
 	}
+}
+
+// VerifikasiPembayaran mengecek status pembayaran Midtrans langsung dari frontend
+// (solusi untuk webhook yang tidak sampai ke localhost)
+func VerifikasiPembayaran(c *gin.Context) {
+	id := c.Param("id")
+	userIDVal, _ := c.Get("userID")
+	userID := userIDVal.(uint)
+	peranVal, _ := c.Get("peran")
+	peran := peranVal.(string)
+
+	var pesanan models.Pesanan
+	if err := config.DB.First(&pesanan, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
+		return
+	}
+
+	if peran != "admin" && pesanan.PenggunaID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses dilarang"})
+		return
+	}
+
+	if pesanan.MetodePembayaran != "midtrans" || pesanan.MidtransID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pesanan ini tidak menggunakan Midtrans"})
+		return
+	}
+
+	prosesStatusDariMidtrans(&pesanan)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status_pesanan":    pesanan.Status,
+		"status_pembayaran": pesanan.StatusPembayaran,
+	})
+}
+
+// MidtransNotification menangani webhook dari Midtrans saat status pembayaran berubah
+func MidtransNotification(c *gin.Context) {
+	var notificationPayload map[string]interface{}
+	if err := c.ShouldBindJSON(&notificationPayload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format payload tidak valid"})
+		return
+	}
+
+	orderId, exists := notificationPayload["order_id"].(string)
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id tidak ditemukan"})
+		return
+	}
+
+	var pesanan models.Pesanan
+	if err := config.DB.Where("midtrans_id = ?", orderId).First(&pesanan).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
+		return
+	}
+
+	prosesStatusDariMidtrans(&pesanan)
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

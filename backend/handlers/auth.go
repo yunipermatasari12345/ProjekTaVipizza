@@ -123,3 +123,104 @@ func GetProfil(c *gin.Context) {
 		"user": pengguna,
 	})
 }
+
+type UpdateProfilInput struct {
+	Nama    string `json:"nama"`
+	Telepon string `json:"telepon"`
+	Alamat  string `json:"alamat"`
+}
+
+func UpdateProfil(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req UpdateProfilInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if req.Nama != "" {
+		updates["nama"] = req.Nama
+	}
+	if req.Telepon != "" {
+		updates["telepon"] = req.Telepon
+	}
+	if req.Alamat != "" {
+		updates["alamat"] = req.Alamat
+	}
+
+	if err := config.DB.Model(&models.Pengguna{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate profil"})
+		return
+	}
+
+	var pengguna models.Pengguna
+	config.DB.First(&pengguna, userID)
+	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diupdate", "user": pengguna})
+}
+
+type ChangePasswordInput struct {
+	PasswordLama string `json:"password_lama" binding:"required"`
+	PasswordBaru string `json:"password_baru" binding:"required,min=6"`
+}
+
+func ChangePassword(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req ChangePasswordInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password baru minimal 6 karakter"})
+		return
+	}
+
+	var pengguna models.Pengguna
+	if err := config.DB.First(&pengguna, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pengguna tidak ditemukan"})
+		return
+	}
+
+	if !utils.VerifikasiPassword(req.PasswordLama, pengguna.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password lama salah"})
+		return
+	}
+
+	passwordHashed, err := utils.HashPassword(req.PasswordBaru)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengenkripsi password"})
+		return
+	}
+
+	config.DB.Model(&pengguna).Update("password", passwordHashed)
+	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diubah"})
+}
+
+func AmbilSemuaPelanggan(c *gin.Context) {
+	var pelanggan []models.Pengguna
+	if err := config.DB.Where("peran = ?", "pelanggan").Order("id desc").Find(&pelanggan).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pelanggan"})
+		return
+	}
+	c.JSON(http.StatusOK, pelanggan)
+}
+
+func AmbilDetailPelanggan(c *gin.Context) {
+	id := c.Param("id")
+	var pengguna models.Pengguna
+	if err := config.DB.First(&pengguna, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pelanggan tidak ditemukan"})
+		return
+	}
+	if pengguna.Peran != "pelanggan" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID bukan pelanggan"})
+		return
+	}
+
+	var pesanan []models.Pesanan
+	config.DB.Where("pengguna_id = ?", id).Preload("ItemPesanan").Order("id desc").Limit(20).Find(&pesanan)
+
+	c.JSON(http.StatusOK, gin.H{
+		"pelanggan": pengguna,
+		"riwayat":   pesanan,
+	})
+}

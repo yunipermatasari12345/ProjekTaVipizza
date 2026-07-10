@@ -1,201 +1,329 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, ClipboardList, Clock, CheckCircle2, XCircle, Package, Eye, User, Settings, LogOut } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUrl';
+import {
+  ShoppingBag, Clock, CheckCircle2, Pizza, ChevronRight,
+  RefreshCw, MapPin, Phone, User, Star, Sparkles, Tag,
+  Flame, ArrowRight, Package, Zap, TrendingUp
+} from 'lucide-react';
+
+const STATUS_CONFIG = {
+  menunggu_pembayaran: { label: 'Menunggu Bayar',  color: '#f59e0b', bg: '#fef3c7', text: '#92400e', dot: '#f59e0b' },
+  menunggu_validasi:   { label: 'Validasi Admin',   color: '#8b5cf6', bg: '#ede9fe', text: '#5b21b6', dot: '#8b5cf6' },
+  diproses:            { label: 'Diproses',          color: '#3b82f6', bg: '#dbeafe', text: '#1e40af', dot: '#3b82f6' },
+  sedang_diantar:      { label: 'Sedang Diantar',   color: '#8b5cf6', bg: '#ede9fe', text: '#5b21b6', dot: '#8b5cf6' },
+  selesai:             { label: 'Selesai',            color: '#10b981', bg: '#d1fae5', text: '#065f46', dot: '#10b981' },
+  dibatalkan:          { label: 'Dibatalkan',         color: '#ef4444', bg: '#fee2e2', text: '#991b1b', dot: '#ef4444' },
+};
 
 export default function DashboardPelanggan() {
-  const { user, token, logout } = useAuth();
+  const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [promoIndex, setPromoIndex] = useState(0);
 
-  useEffect(() => {
-    if (!token || token === "mock_jwt_token_vipizza") return;
+  const muatData = () => {
+    if (!token) return;
+    setLoading(true);
     fetch('http://localhost:8080/api/dashboard', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(res => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch(() => {
-        setData(null);
-        setLoading(false);
-      });
-  }, [token]);
-
-  const labelStatus = (status) => {
-    const map = {
-      menunggu_pembayaran: 'Menunggu Bayar',
-      diproses: 'Diproses',
-      sedang_diantar: 'Sedang Diantar',
-      selesai: 'Selesai',
-      dibatalkan: 'Dibatalkan',
-    };
-    return map[status] || status;
+      .then(res => { setData(res); setLoading(false); })
+      .catch(() => { setData(null); setLoading(false); });
   };
 
-  const warnaStatus = (status) => {
-    const map = {
-      menunggu_pembayaran: 'bg-amber-100 text-amber-700',
-      diproses: 'bg-blue-100 text-blue-700',
-      sedang_diantar: 'bg-purple-100 text-purple-700',
-      selesai: 'bg-emerald-100 text-emerald-700',
-      dibatalkan: 'bg-red-100 text-red-700',
-    };
-    return map[status] || 'bg-slate-100 text-slate-700';
-  };
+  useEffect(() => { muatData(); }, [token]);
+
+  const promoList    = data?.promo_aktif   || [];
+  const menuFavorit  = data?.menu_favorit  || [];
+  const menuTerbaru  = data?.menu_terbaru  || [];
+  const kategori     = data?.kategori      || [];
+
+  useEffect(() => {
+    if (promoList.length <= 1) return;
+    const t = setInterval(() => setPromoIndex(i => (i + 1) % promoList.length), 4000);
+    return () => clearInterval(t);
+  }, [promoList.length]);
+
+  const statCards = [
+    {
+      icon: Package, label: 'Total Pesanan',
+      value: data?.ringkasan?.total_pesanan || 0,
+    },
+    {
+      icon: Zap, label: 'Diproses',
+      value: data?.ringkasan?.pesanan_diproses || 0,
+    },
+    {
+      icon: CheckCircle2, label: 'Selesai',
+      value: data?.ringkasan?.pesanan_selesai || 0,
+    },
+    {
+      icon: TrendingUp, label: 'Total Belanja',
+      value: `Rp ${(data?.ringkasan?.total_belanja || 0).toLocaleString('id-ID')}`,
+    },
+  ];
+
+  const pesanan       = data?.pesanan_terbaru || [];
+  const pesananAktif  = pesanan.filter(p => ['diproses','sedang_diantar','menunggu_pembayaran','menunggu_validasi'].includes(p.status));
+  const pesananSelesai= pesanan.filter(p => p.status === 'selesai');
+
+  const labelStatus = s => STATUS_CONFIG[s]?.label || s;
+  const namaDepan   = user?.nama?.split(' ')[0] || 'Pelanggan';
+
+  const jamSekarang = new Date().getHours();
+  const sapaan = jamSekarang < 12 ? 'Selamat Pagi' : jamSekarang < 17 ? 'Selamat Siang' : 'Selamat Malam';
 
   return (
-    <div className="page-wrap min-h-screen text-left">
-      <div className="mb-8">
-        <p className="text-brand-orange font-semibold text-xs uppercase tracking-wider">Dashboard</p>
-        <h1 className="page-title mt-1">Halo, {user?.nama?.split(' ')[0] || 'Pelanggan'}!</h1>
-        <p className="page-subtitle">Ringkasan aktivitas pemesanan Anda di Vipizza</p>
-      </div>
+    <div className="min-h-screen bg-[#FAF6F1]">
 
-      {/* Ringkasan Statistik */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="card-fe-white p-5 text-left flex items-center gap-4">
-          <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center shrink-0">
-            <ShoppingBag className="w-6 h-6 text-brand-orange" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold text-slate-800">{data?.ringkasan?.total_pesanan || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Total Pesanan</p>
-          </div>
-        </div>
-        <div className="card-fe-white p-5 text-left flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
-            <Package className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold text-slate-800">{data?.ringkasan?.pesanan_diproses || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Sedang Aktif</p>
-          </div>
-        </div>
-        <div className="card-fe-white p-5 text-left flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold text-slate-800">{data?.ringkasan?.pesanan_selesai || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Selesai</p>
-          </div>
-        </div>
-        <div className="card-fe-white p-5 text-left flex items-center gap-4">
-          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-            <XCircle className="w-6 h-6 text-red-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold text-slate-800">{data?.ringkasan?.pesanan_dibatalkan || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Dibatalkan</p>
-          </div>
-        </div>
-      </div>
+      {/* ===== HERO HEADER ===== */}
+      <div className="relative overflow-hidden bg-[#FAF6F1] border-b border-[#E8DDD5]">
+        {/* Subtle decorative cream blobs */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#F3E6DC] opacity-60 blur-xl" />
+        <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-[#EFE3D8] opacity-50 blur-xl" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Riwayat Pesanan Terbaru */}
-        <div className="lg:col-span-8">
-          <div className="card-fe-white p-6 text-left">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-brand-orange" />
-                Pesanan Terbaru
-              </h3>
-              <Link to="/riwayat" className="text-xs font-bold text-brand-orange hover:underline">
-                Lihat Semua
-              </Link>
+        <div className="relative max-w-5xl mx-auto px-6 py-10 md:py-12">
+          <div className="flex items-center justify-between flex-wrap gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[#8B3A0F] text-xs font-black tracking-widest uppercase">{sapaan} 👋</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black text-[#2C1810] leading-tight">
+                Halo, <span className="text-[#8B3A0F]">{namaDepan}!</span>
+              </h1>
+              <p className="text-[#5C3D2E] text-sm mt-1.5 font-medium">Yuk pesan pizza favoritmu hari ini 🍕</p>
             </div>
-
-            {loading ? (
-              <div className="text-center py-10 text-slate-400 text-sm font-medium">Memuat data...</div>
-            ) : data?.pesanan_terbaru?.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {data.pesanan_terbaru.map((pes) => (
-                  <div key={pes.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold text-slate-800 text-sm">Pesanan #{pes.id}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(pes.tanggal_pesanan).toLocaleDateString('id-ID', {
-                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })}
-                      </span>
-                      <span className={`inline-block self-start mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${warnaStatus(pes.status)}`}>
-                        {labelStatus(pes.status)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-extrabold text-brand-orange text-sm">
-                        Rp {pes.total_harga?.toLocaleString('id-ID') || 0}
-                      </span>
-                      <Link
-                        to={`/track/${pes.id}`}
-                        className="bg-white border border-slate-200 hover:border-brand-orange p-2 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-slate-500" />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10 text-slate-400">
-                <ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">Belum ada pesanan</p>
-                <Link to="/menu" className="text-xs font-bold text-brand-orange hover:underline mt-2 inline-block">
-                  Pesan Sekarang
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Info Profil & Quick Actions */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <div className="card-fe-white p-6 text-left">
-            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
-              <User className="w-5 h-5 text-brand-orange" />
-              Profil Saya
-            </h3>
-            <div className="flex flex-col gap-2.5 text-sm text-slate-600">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Nama</span>
-                <span className="font-semibold text-slate-800">{user?.nama || '-'}</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Email</span>
-                <span className="font-semibold text-slate-800">{user?.email || '-'}</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Telepon</span>
-                <span className="font-semibold text-slate-800">{user?.telepon || '-'}</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Alamat</span>
-                <span className="font-semibold text-slate-800 text-xs">{user?.alamat || '-'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="card-fe-white p-6 text-left">
-            <h3 className="font-bold text-slate-800 text-lg mb-4">Menu Cepat</h3>
-            <div className="flex flex-col gap-2">
-              <Link to="/menu" className="flex items-center gap-3 p-3 bg-pink-50 hover:bg-pink-100 rounded-xl transition-colors text-sm font-semibold text-slate-700">
-                <ShoppingBag className="w-5 h-5 text-brand-orange" />
-                Pesan Pizza
+            <div className="flex items-center gap-3">
+              <Link to="/menu"
+                className="flex items-center gap-2 bg-black hover:bg-gray-900 text-white font-extrabold text-sm px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all">
+                <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" /> Pesan Sekarang
               </Link>
-              <Link to="/riwayat" className="flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-sm font-semibold text-slate-700">
-                <Clock className="w-5 h-5 text-blue-600" />
-                Riwayat Pesanan
-              </Link>
-              <button onClick={logout} className="flex items-center gap-3 p-3 bg-red-50 hover:bg-red-100 rounded-xl transition-colors text-sm font-semibold text-red-600 w-full text-left cursor-pointer">
-                <LogOut className="w-5 h-5" />
-                Keluar Akun
+              <button onClick={muatData}
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-[#2C1810] text-xs px-4 py-3 rounded-full transition-all font-bold cursor-pointer border border-[#E8DDD5] shadow-sm">
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="max-w-5xl mx-auto px-4 pb-10 mt-6">
+
+        {/* ===== STAT CARDS ===== */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {statCards.map(({ icon: Icon, label, value }) => (
+            <div key={label}
+              className="bg-white rounded-2xl shadow-sm border border-[#E8DDD5] p-4 flex flex-col gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF6F1] border border-[#E8DDD5] flex items-center justify-center shadow-sm">
+                <Icon className="w-5 h-5 text-[#8B3A0F]" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-[#5C3D2E] truncate">{label}</p>
+                <p className="text-lg font-black mt-0.5 text-[#2C1810] truncate">{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-12 h-12 rounded-full border-4 border-orange-400 border-t-transparent animate-spin mb-4" />
+            <p className="text-sm text-slate-400 font-medium">Memuat data dashboard...</p>
+          </div>
+        ) : (
+          <>
+            {/* ===== PROMO BANNER KOTAK KE SAMPING ===== */}
+            {promoList.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                    <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <Tag className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                    Promo Spesial ✨
+                  </h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {promoList.map(p => (
+                    <div key={p.id}
+                      className="shrink-0 w-64 bg-white rounded-2xl shadow-sm border border-[#E8DDD5] p-4 flex flex-col justify-between hover:shadow-md transition-all">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="text-[10px] font-black bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Diskon {p.diskon}%
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug truncate">{p.judul}</h4>
+                        <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed h-7">{p.deskripsi}</p>
+                      </div>
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                        {p.kode_promo ? (
+                          <div className="bg-[#FAF6F1] border border-[#E8DDD5] px-2.5 py-1 rounded-lg">
+                            <span className="text-[9px] font-extrabold text-[#8B3A0F] tracking-wider">KODE: {p.kode_promo}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[9px] font-bold text-slate-400">Tanpa Kode</span>
+                        )}
+                        <Link to="/menu" className="text-[10px] font-black text-orange-500 hover:text-orange-600 flex items-center gap-0.5">
+                          Pakai <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
+
+            {/* ===== PESANAN TERBARU ===== */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+              <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                    <Clock className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">Pesanan Aktif</h3>
+                    <p className="text-[10px] text-slate-400">{pesananAktif.length} pesanan berjalan</p>
+                  </div>
+                </div>
+                <Link to="/riwayat" className="text-xs font-bold text-orange-500 hover:text-orange-600 flex items-center gap-1">
+                  Lihat Riwayat <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {pesananAktif.length === 0 ? (
+                <div className="py-14 flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center">
+                    <ShoppingBag className="w-8 h-8 text-slate-200" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-400">Belum ada pesanan aktif</p>
+                  <Link to="/menu"
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-2 rounded-full shadow-md hover:shadow-lg transition-all">
+                    <Flame className="w-3.5 h-3.5" /> Pesan Pizza Sekarang!
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-50">
+                  {pesananAktif.map(p => {
+                    const cfg = STATUS_CONFIG[p.status] || {};
+                    return (
+                      <Link key={p.id} to={`/track/${p.id}`}
+                        className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/80 transition-colors group">
+                        {/* Dot status */}
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{ backgroundColor: cfg.bg }}>
+                            <Clock className="w-5 h-5" style={{ color: cfg.color }} />
+                          </div>
+                          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white animate-pulse"
+                            style={{ backgroundColor: cfg.dot }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-800 text-sm">Pesanan #{p.id}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: cfg.bg, color: cfg.text }}>
+                              {labelStatus(p.status)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {new Date(p.tanggal_pesanan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-slate-800">
+                            Rp {(p.total_harga || 0).toLocaleString('id-ID')}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ===== RIWAYAT SELESAI ===== */}
+            {pesananSelesai.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-sm">
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-sm">Riwayat Selesai</h3>
+                  </div>
+                  <Link to="/riwayat" className="text-xs font-bold text-orange-500 hover:text-orange-600 flex items-center gap-1">
+                    Semua <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {pesananSelesai.slice(0, 4).map(p => (
+                    <Link key={p.id} to={`/track/${p.id}`}
+                      className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/80 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-slate-800 text-sm block">Pesanan #{p.id}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(p.tanggal_pesanan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-extrabold text-emerald-600 text-sm">
+                          Rp {(p.total_harga || 0).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Selesai</span>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-400 transition-colors" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ===== PROFIL CARD ===== */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-400 via-pink-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+                  <User className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-slate-800 text-base truncate">{user?.nama || 'Pelanggan'}</p>
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    {user?.alamat || 'Alamat belum diisi'}
+                  </p>
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1 truncate">
+                    <Phone className="w-3 h-3 shrink-0" />
+                    {user?.telepon || '—'} · {user?.email}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <Link to="/menu"
+                    className="bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all text-center">
+                    + Pesan
+                  </Link>
+                  <Link to="/profil"
+                    className="border border-slate-200 text-slate-600 text-xs font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-center">
+                    Edit Profil
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

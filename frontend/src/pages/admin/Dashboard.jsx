@@ -1,228 +1,164 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  DollarSign, ClipboardList, Users, CheckCircle2,
-  Eye, X, FileSearch, TrendingUp, Clock, RefreshCw,
-  Search, Wallet, CreditCard
+  DollarSign, ClipboardList, Package, Users, Tag, Clock, Eye, X,
+  Search, RefreshCw, ShoppingBag, CheckCircle2, TrendingUp
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
   menunggu_pembayaran: { label: 'Menunggu Bayar', color: '#ffc107', bg: '#fff8e1', text: '#856404' },
-  diproses:            { label: 'Diproses',       color: '#0d6efd', bg: '#e7f1ff', text: '#0a58ca' },
-  sedang_diantar:      { label: 'Sedang Diantar', color: '#6f42c1', bg: '#f3edff', text: '#5a32a3' },
-  selesai:             { label: 'Selesai',         color: '#198754', bg: '#d1e7dd', text: '#0a5432' },
-  dibatalkan:          { label: 'Dibatalkan',      color: '#dc3545', bg: '#f8d7da', text: '#842029' },
+  menunggu_validasi: { label: 'Menunggu Validasi', color: '#ffc107', bg: '#fff8e1', text: '#856404' },
+  diproses:         { label: 'Diproses', color: '#0d6efd', bg: '#e7f1ff', text: '#0a58ca' },
+  dikirim:          { label: 'Dikirim',  color: '#6f42c1', bg: '#f3edff', text: '#5a32a3' },
+  selesai:          { label: 'Selesai',  color: '#198754', bg: '#d1e7dd', text: '#0a5432' },
+  dibatalkan:       { label: 'Dibatalkan', color: '#dc3545', bg: '#f8d7da', text: '#842029' },
 };
 
 export default function Dashboard() {
   const { token } = useAuth();
-  const [pesananList, setPesananList] = useState([]);
+  const API = 'http://localhost:8080/api';
+  const headers = { 'Authorization': `Bearer ${token}` };
+
+  const [summary, setSummary] = useState(null);
+  const [pesanan, setPesanan] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pesananTerpilih, setPesananTerpilih] = useState(null);
-  const [catatanPenolakan, setCatatanPenolakan] = useState('');
-  const [modalBuka, setModalBuka] = useState(false);
   const [filterStatus, setFilterStatus] = useState('semua');
   const [searchQ, setSearchQ] = useState('');
+  const [detail, setDetail] = useState(null);
 
-  const muatPesanan = useCallback(async () => {
+  useEffect(() => {
+    ambilData();
+  }, []);
+
+  const ambilData = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/orders', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const [sumRes, ordRes] = await Promise.all([
+        fetch(`${API}/reports/summary`, { headers }),
+        fetch(`${API}/orders`, { headers }),
+      ]);
+      if (sumRes.ok) setSummary(await sumRes.json());
+      if (ordRes.ok) setPesanan(await ordRes.json());
+    } catch (e) {
+      console.warn('Gagal ambil data dashboard:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatus = async (id, statusBaru) => {
+    try {
+      const res = await fetch(`${API}/orders/${id}/status`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusBaru }),
       });
       if (res.ok) {
+        setDetail(null);
+        ambilData();
+      } else {
         const data = await res.json();
-        setPesananList(Array.isArray(data) ? data : []);
+        alert(data.error || 'Gagal update status');
       }
-    } catch (err) {
-      console.warn('Gagal muat pesanan:', err);
-    }
-    setLoading(false);
-  }, [token]);
-
-  useEffect(() => { muatPesanan(); }, [muatPesanan]);
-
-  const handleUpdateStatus = async (id, statusBaru) => {
-    try {
-      await fetch(`http://localhost:8080/api/orders/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: statusBaru })
-      });
-      muatPesanan();
-    } catch (err) {
-      console.warn('Gagal update status:', err);
-    }
-    setModalBuka(false);
-    setPesananTerpilih(null);
-  };
-
-  const handleUpdatePembayaran = async (id, statusPembayaran) => {
-    try {
-      await fetch(`http://localhost:8080/api/orders/${id}/payment-status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status_pembayaran: statusPembayaran })
-      });
-      muatPesanan();
-    } catch (err) {
-      console.warn('Gagal update status pembayaran:', err);
+    } catch (e) {
+      console.warn(e);
     }
   };
 
-  const totalPendapatan = pesananList.filter(p => p.status === 'selesai').reduce((s, p) => s + (p.total_harga || 0), 0);
-  const totalMenunggu  = pesananList.filter(p => p.status === 'menunggu_pembayaran').length;
-  const totalDiproses  = pesananList.filter(p => p.status === 'diproses' || p.status === 'sedang_diantar').length;
-  const totalSelesai   = pesananList.filter(p => p.status === 'selesai').length;
+  const formatRp = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
+  const formatTgl = (t) => t ? new Date(t).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
-  const statCards = [
-    { icon: DollarSign, label: 'Total Pendapatan', value: `Rp ${totalPendapatan.toLocaleString('id-ID')}`, iconBg: '#d1e7dd', iconColor: '#198754' },
-    { icon: Wallet, label: 'Belum Dibayar', value: `${pesananList.filter(p => p.status_pembayaran === 'belum_dibayar' && p.status !== 'dibatalkan').length} Pesanan`, iconBg: '#fff3cd', iconColor: '#ffc107' },
-    { icon: Clock, label: 'Sedang Diproses', value: `${totalDiproses} Pesanan`, iconBg: '#cfe2ff', iconColor: '#0d6efd' },
-    { icon: CheckCircle2, label: 'Selesai', value: `${totalSelesai} Pesanan`, iconBg: '#e0cffc', iconColor: '#6f42c1' },
-  ];
-
-  const pesananFiltered = pesananList.filter(p => {
-    const matchStatus = filterStatus === 'semua' || p.status === filterStatus;
-    const matchSearch = searchQ === '' || String(p.id).includes(searchQ) || (p.alamat_pengiriman || '').toLowerCase().includes(searchQ.toLowerCase());
-    return matchStatus && matchSearch;
+  const filteredPesanan = pesanan.filter(p => {
+    if (filterStatus !== 'semua' && p.status !== filterStatus) return false;
+    if (searchQ && !p.id?.toString().includes(searchQ) && !p.alamat_pengiriman?.toLowerCase().includes(searchQ.toLowerCase())) return false;
+    return true;
   });
 
-  const StatusBadge = ({ status }) => {
-    const cfg = STATUS_CONFIG[status] || { label: status, bg: '#f0f0f0', text: '#555' };
-    return <span style={{ backgroundColor: cfg.bg, color: cfg.text }} className="admin-badge">{cfg.label}</span>;
-  };
-
-  const aksiTombol = (pes) => {
-    const btn = (label, color, onClick) => (
-      <button key={label} className={`admin-btn-sm admin-btn-sm--${color}`} onClick={onClick}>{label}</button>
-    );
-
-    const btns = [];
-
-    if (pes.status === 'menunggu_pembayaran') {
-      if (pes.metode_pembayaran !== 'midtrans') {
-        btns.push(btn('Proses', 'success', () => handleUpdateStatus(pes.id, 'diproses')));
-      }
-      btns.push(btn('Batalkan', 'danger', () => handleUpdateStatus(pes.id, 'dibatalkan')));
-    }
-    if (pes.status === 'diproses') {
-      btns.push(btn('Antar', 'primary', () => handleUpdateStatus(pes.id, 'sedang_diantar')));
-      btns.push(btn('Batalkan', 'danger', () => handleUpdateStatus(pes.id, 'dibatalkan')));
-    }
-    if (pes.status === 'sedang_diantar') {
-      btns.push(btn('Selesai', 'success', () => handleUpdateStatus(pes.id, 'selesai')));
-    }
-
-    if (pes.status_pembayaran === 'belum_dibayar' && pes.metode_pembayaran === 'tunai') {
-      btns.push(btn('Lunas', 'success', () => handleUpdatePembayaran(pes.id, 'lunas')));
-    }
-
-    return btns;
-  };
-
-  if (loading) {
-    return <div className="admin-page flex items-center justify-center py-20 text-slate-400 font-bold">Memuat data...</div>;
-  }
+  const statCards = [
+    { icon: ShoppingBag, label: 'Total Pesanan', value: summary?.total_pesanan || 0, iconBg: '#e7f1ff', iconColor: '#0d6efd' },
+    { icon: Package, label: 'Total Menu', value: summary?.total_menu || 0, iconBg: '#fff3cd', iconColor: '#ffc107' },
+    { icon: Users, label: 'Total Pelanggan', value: summary?.total_pelanggan || 0, iconBg: '#d1e7dd', iconColor: '#198754' },
+    { icon: DollarSign, label: 'Total Penjualan', value: formatRp(summary?.total_penjualan || 0), iconBg: '#e7f1ff', iconColor: '#0d6efd' },
+    { icon: Tag, label: 'Promo Aktif', value: summary?.promo_aktif || 0, iconBg: '#f3edff', iconColor: '#6f42c1' },
+    { icon: Clock, label: 'Menunggu Diproses', value: summary?.menunggu_diproses || 0, iconBg: '#fff8e1', iconColor: '#ffc107' },
+  ];
 
   return (
-    <div className="admin-page">
-      <div className="admin-page__header">
-        <div>
-          <p className="admin-page__header-eyebrow">PANEL ADMIN</p>
-          <h2 className="admin-page__header-title">Dashboard</h2>
-          <p className="admin-page__header-subtitle">Ringkasan data pesanan Vipizza Homemade Padang</p>
-        </div>
-        <button onClick={muatPesanan} className="admin-btn-outline">
-          <RefreshCw className="w-4 h-4" /> Refresh
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-lg font-bold text-gray-800 uppercase">Dashboard</h1>
+        <button onClick={ambilData} className="border border-gray-300 rounded px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 flex items-center gap-1.5">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
 
-      <div className="admin-stats-grid">
-        {statCards.map(({ icon: Icon, label, value, iconBg, iconColor }) => (
-          <div key={label} className="admin-stat-card windows-tile">
-            <div className="admin-stat-card__body">
-              <div>
-                <p className="admin-stat-card__label">{label}</p>
-                <p className="admin-stat-card__value">{value}</p>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        {statCards.map((card, i) => (
+          <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: card.iconBg }}>
+                <card.icon className="w-5 h-5" style={{ color: card.iconColor }} />
               </div>
-              <div className="admin-stat-card__icon-wrap" style={{ backgroundColor: iconBg }}>
-                <Icon className="w-5 h-5" style={{ color: iconColor }} />
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase">{card.label}</p>
+                <p className="font-extrabold text-gray-800 text-sm mt-0.5">{card.value}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="admin-table-card">
-        <div className="admin-table-card__header">
-          <div>
-            <h3 className="admin-table-card__title">Data Pesanan Masuk</h3>
-            <p className="admin-table-card__subtitle">{pesananFiltered.length} dari {pesananList.length} pesanan</p>
+      {/* Daftar Pesanan */}
+      <div className="bg-white border border-gray-300 rounded overflow-hidden">
+        <div className="p-4 border-b border-gray-300 bg-gray-50 flex flex-wrap gap-3 items-center">
+          <div className="relative w-56">
+            <input type="text" placeholder="Cari ID atau alamat..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="w-full border border-gray-300 rounded pl-3 pr-8 py-1.5 text-sm outline-none focus:border-brand-orange" />
+            <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           </div>
-          <div className="admin-table-card__actions">
-            <div className="admin-search-wrap">
-              <Search className="admin-search-icon" />
-              <input type="text" placeholder="Cari ID atau alamat..." value={searchQ} onChange={e => setSearchQ(e.target.value)} className="admin-search-input" />
-            </div>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="admin-select">
-              <option value="semua">Semua Status</option>
-              {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+          <div className="flex gap-1 flex-wrap">
+            {['semua', 'menunggu_pembayaran', 'menunggu_validasi', 'diproses', 'dikirim', 'selesai', 'dibatalkan'].map((s) => (
+              <button key={s} onClick={() => setFilterStatus(s)}
+                className={`text-[10px] font-bold px-2.5 py-1.5 rounded border ${filterStatus === s ? 'bg-brand-orange text-white border-brand-orange' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`}>
+                {s === 'semua' ? 'Semua' : (STATUS_CONFIG[s]?.label || s)}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-white border-b border-gray-300">
               <tr>
-                <th>No. Pesanan</th>
-                <th>Pelanggan</th>
-                <th>Alamat</th>
-                <th>Total</th>
-                <th>Bayar</th>
-                <th>Status</th>
-                <th className="text-center">Aksi</th>
+                <th className="py-3 px-4 font-semibold text-gray-700 w-14 text-center">No</th>
+                <th className="py-3 px-4 font-semibold text-gray-700">ID Pesanan</th>
+                <th className="py-3 px-4 font-semibold text-gray-700">Pelanggan</th>
+                <th className="py-3 px-4 font-semibold text-gray-700">Total</th>
+                <th className="py-3 px-4 font-semibold text-gray-700 text-center">Metode</th>
+                <th className="py-3 px-4 font-semibold text-gray-700 text-center">Status</th>
+                <th className="py-3 px-4 font-semibold text-gray-700 text-center w-24">Aksi</th>
               </tr>
             </thead>
-            <tbody>
-              {pesananFiltered.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="admin-table__empty">
-                    <FileSearch className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p>Tidak ada pesanan ditemukan</p>
-                  </td>
-                </tr>
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
+                <tr><td colSpan="7" className="text-center py-8 text-gray-400">Memuat data...</td></tr>
+              ) : filteredPesanan.length === 0 ? (
+                <tr><td colSpan="7" className="text-center py-8 text-gray-400">Tidak ada pesanan.</td></tr>
               ) : (
-                pesananFiltered.map((pes) => (
-                  <tr key={pes.id}>
-                    <td><span className="admin-table__id">#{pes.id}</span></td>
-                    <td className="text-xs font-semibold text-slate-700">{pes.nama_penerima || pes.pengguna?.nama || '-'}</td>
-                    <td className="admin-table__addr text-xs">{pes.alamat_pengiriman}</td>
-                    <td className="admin-table__price">Rp {(pes.total_harga || 0).toLocaleString('id-ID')}</td>
-                    <td>
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${pes.status_pembayaran === 'lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {pes.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum'}
-                      </span>
-                      <span className="block text-[9px] text-slate-400 mt-0.5">
-                        {pes.metode_pembayaran === 'midtrans' ? 'Midtrans' : 'Tunai'}
+                filteredPesanan.slice(0, 20).map((p, i) => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="py-3 px-4 text-center">{i + 1}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-xs">#{p.id}</td>
+                    <td className="py-3 px-4">{p.pengguna?.nama || '-'}</td>
+                    <td className="py-3 px-4 font-bold">{formatRp(p.total_harga)}</td>
+                    <td className="py-3 px-4 text-center text-[10px] uppercase font-bold">{p.metode_pembayaran || '-'}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: STATUS_CONFIG[p.status]?.bg || '#f1f5f9', color: STATUS_CONFIG[p.status]?.text || '#475569' }}>
+                        {STATUS_CONFIG[p.status]?.label || p.status}
                       </span>
                     </td>
-                    <td><StatusBadge status={pes.status} /></td>
-                    <td>
-                      <div className="admin-table__actions flex-wrap gap-1">
-                        <button className="admin-btn-sm admin-btn-sm--outline" onClick={() => { setPesananTerpilih(pes); setModalBuka(true); }}>
-                          <Eye className="w-3.5 h-3.5" /> Detail
-                        </button>
-                        {aksiTombol(pes)}
-                      </div>
+                    <td className="py-3 px-4 text-center">
+                      <button onClick={() => setDetail(p)} className="p-1.5 border border-gray-300 rounded hover:bg-gray-100"><Eye className="w-3.5 h-3.5 text-blue-600" /></button>
                     </td>
                   </tr>
                 ))
@@ -232,108 +168,67 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {modalBuka && pesananTerpilih && (
-        <div className="admin-modal-overlay" onClick={() => { setModalBuka(false); setPesananTerpilih(null); }}>
-          <div className="admin-modal" onClick={e => e.stopPropagation()}>
-            <div className="admin-modal__header">
-              <div>
-                <h3 className="admin-modal__title">Detail Pesanan</h3>
-                <p className="admin-modal__id">#{pesananTerpilih.id}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <StatusBadge status={pesananTerpilih.status} />
-                <button onClick={() => { setModalBuka(false); setPesananTerpilih(null); }} className="admin-modal__close">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {/* Modal Detail */}
+      {detail && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-800">Detail Pesanan #{detail.id}</h3>
+              <button onClick={() => setDetail(null)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="admin-modal__body">
-              <div className="admin-modal__section">
-                <p className="admin-modal__section-title">Informasi Pesanan</p>
-                <div className="admin-modal__info-list">
-                  <div className="admin-modal__info-row">
-                    <span>Pelanggan</span>
-                    <span className="font-semibold">{pesananTerpilih.nama_penerima || pesananTerpilih.pengguna?.nama || '-'}</span>
-                  </div>
-                  <div className="admin-modal__info-row">
-                    <span>Telepon</span>
-                    <span>{pesananTerpilih.telepon}</span>
-                  </div>
-                  <div className="admin-modal__info-row">
-                    <span>Alamat</span>
-                    <span className="text-xs">{pesananTerpilih.alamat_pengiriman}</span>
-                  </div>
-                  <div className="admin-modal__info-row">
-                    <span>Metode</span>
-                    <span className="font-semibold uppercase text-xs">{pesananTerpilih.metode_pembayaran}</span>
-                  </div>
-                  <div className="admin-modal__info-row">
-                    <span>Status Bayar</span>
-                    <span className={`font-semibold ${pesananTerpilih.status_pembayaran === 'lunas' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {pesananTerpilih.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum Dibayar'}
-                    </span>
-                  </div>
-                  {pesananTerpilih.catatan && (
-                    <div className="admin-modal__info-row">
-                      <span>Catatan</span>
-                      <span className="text-xs italic">{pesananTerpilih.catatan}</span>
-                    </div>
-                  )}
-                </div>
+            <div className="flex flex-col gap-3 text-sm mb-4">
+              <div className="flex justify-between"><span className="text-gray-500">Pelanggan</span><span className="font-bold">{detail.pengguna?.nama || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Telepon</span><span>{detail.telepon || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Tanggal</span><span>{formatTgl(detail.tanggal_pesanan)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Metode Bayar</span><span className="text-[10px] font-bold uppercase">{detail.metode_pembayaran || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Status</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: STATUS_CONFIG[detail.status]?.bg || '#f1f5f9', color: STATUS_CONFIG[detail.status]?.text || '#475569' }}>
+                  {STATUS_CONFIG[detail.status]?.label || detail.status}
+                </span>
+              </div>
+              <div className="flex justify-between"><span className="text-gray-500">Alamat</span><span className="text-right max-w-[250px]">{detail.alamat_pengiriman || '-'}</span></div>
+            </div>
 
-                <p className="admin-modal__section-title mt-4">Menu Dipesan</p>
-                <div className="admin-modal__menu-list">
-                  {(pesananTerpilih.item_pesanan || []).map((item, i) => (
-                    <div key={i} className="admin-modal__menu-item">
-                      <span>{item.menu?.nama || 'Pizza'} <span className="text-gray-400">×{item.jumlah}</span></span>
-                      <span>Rp {((item.jumlah || 0) * (item.harga || 0)).toLocaleString('id-ID')}</span>
-                    </div>
-                  ))}
-                  <div className="admin-modal__menu-total">
-                    <span>Total</span>
-                    <span>Rp {(pesananTerpilih.total_harga || 0).toLocaleString('id-ID')}</span>
-                  </div>
-                </div>
+            {detail.bukti_pembayaran && (
+              <div className="mb-4">
+                <p className="text-xs font-bold text-gray-600 mb-1">Bukti Pembayaran</p>
+                <img src={detail.bukti_pembayaran.startsWith('http') ? detail.bukti_pembayaran : `http://localhost:8080${detail.bukti_pembayaran}`} alt="Bukti" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
+              </div>
+            )}
 
-                {/* Aksi */}
-                <div className="admin-modal__action-area mt-4">
-                  <div className="flex gap-2 flex-wrap">
-                    {pesananTerpilih.status === 'menunggu_pembayaran' && (
-                      <>
-                        {pesananTerpilih.metode_pembayaran !== 'midtrans' && (
-                          <button className="admin-btn-success flex-1" onClick={() => handleUpdateStatus(pesananTerpilih.id, 'diproses')}>
-                            <CheckCircle2 className="w-4 h-4" /> Proses Pesanan
-                          </button>
-                        )}
-                        <button className="admin-btn-danger" onClick={() => handleUpdateStatus(pesananTerpilih.id, 'dibatalkan')}>
-                          <X className="w-4 h-4" /> Batalkan
-                        </button>
-                      </>
-                    )}
-                    {pesananTerpilih.status === 'diproses' && (
-                      <>
-                        <button className="admin-btn-primary" onClick={() => handleUpdateStatus(pesananTerpilih.id, 'sedang_diantar')}>
-                          Kirim
-                        </button>
-                        <button className="admin-btn-danger" onClick={() => handleUpdateStatus(pesananTerpilih.id, 'dibatalkan')}>
-                          Batalkan
-                        </button>
-                      </>
-                    )}
-                    {pesananTerpilih.status === 'sedang_diantar' && (
-                      <button className="admin-btn-success flex-1" onClick={() => handleUpdateStatus(pesananTerpilih.id, 'selesai')}>
-                        <CheckCircle2 className="w-4 h-4" /> Selesai
-                      </button>
-                    )}
-                    {pesananTerpilih.status_pembayaran === 'belum_dibayar' && pesananTerpilih.metode_pembayaran === 'tunai' && (
-                      <button className="admin-btn-success flex-1" onClick={() => handleUpdatePembayaran(pesananTerpilih.id, 'lunas')}>
-                        <Wallet className="w-4 h-4" /> Tandai Lunas
-                      </button>
-                    )}
+            {detail.item_pesanan?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-bold text-gray-600 mb-2">Item Pesanan</p>
+                {detail.item_pesanan.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm border-b border-gray-100 py-1.5 last:border-0">
+                    <span>{item.menu?.nama || 'Menu'} x{item.jumlah}</span>
+                    <span className="font-bold">{formatRp(item.harga * item.jumlah)}</span>
                   </div>
+                ))}
+                <div className="flex justify-between text-sm font-bold mt-2 pt-2 border-t border-gray-200">
+                  <span>Total</span><span>{formatRp(detail.total_harga)}</span>
                 </div>
               </div>
+            )}
+
+            {/* Tombol Aksi */}
+            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+              {detail.status === 'menunggu_pembayaran' && (
+                <button onClick={() => handleStatus(detail.id, 'diproses')} className="btn-primary text-xs py-2 px-4 flex-1">Proses Pesanan</button>
+              )}
+              {detail.status === 'menunggu_validasi' && (
+                <>
+                  <button onClick={() => handleStatus(detail.id, 'diproses')} className="btn-primary text-xs py-2 px-4 flex-1">Setuju & Proses</button>
+                  <button onClick={() => handleStatus(detail.id, 'dibatalkan')} className="bg-red-500 text-white text-xs py-2 px-4 rounded-lg hover:bg-red-600 flex-1">Tolak</button>
+                </>
+              )}
+              {detail.status === 'diproses' && (
+                <button onClick={() => handleStatus(detail.id, 'dikirim')} className="btn-primary text-xs py-2 px-4 flex-1">Tandai Dikirim</button>
+              )}
+              {detail.status === 'dikirim' && (
+                <button onClick={() => handleStatus(detail.id, 'selesai')} className="btn-primary text-xs py-2 px-4 flex-1">Tandai Selesai</button>
+              )}
             </div>
           </div>
         </div>

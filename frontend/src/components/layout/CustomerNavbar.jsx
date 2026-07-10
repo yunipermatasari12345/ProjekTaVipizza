@@ -2,9 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, Menu as MenuIcon, X } from 'lucide-react';
+import { ShoppingCart, Menu as MenuIcon, X, User } from 'lucide-react';
 
-// Navbar front-end ala Bootstrap TA kating — teal gelap, menu horizontal
+// ===================================================
+// WARNA BRAND VIPIZZA (Konsisten di semua halaman)
+// Primary: #8B3A0F (Pizza coklat tua / rust)
+// Secondary: #FAF6F1 (Krem hangat)
+// Dark: #2C1810 (Coklat gelap)
+// ===================================================
+
 export default function CustomerNavbar() {
   const { user, logout } = useAuth();
   const { hitungTotalItem } = useCart();
@@ -21,105 +27,97 @@ export default function CustomerNavbar() {
   };
 
   const linkClass = (path) =>
-    `text-sm font-medium transition-colors px-1 py-2 border-b-2 ${
+    `text-sm transition-colors px-2 py-1 ${
       aktif(path)
-        ? 'text-white border-white'
-        : 'text-white/80 border-transparent hover:text-white'
+        ? 'text-black font-black border-b-2 border-black'
+        : 'text-black/80 hover:text-black font-bold'
     }`;
 
   return (
-    <header className="bg-[#0b5345] sticky top-0 z-50 shadow-md">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-[#FAF6F1] border-b border-[#E8DDD5] shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-[72px]">
 
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-lg">
-            🍕
-          </div>
-          <div className="text-left leading-tight">
-            <span className="font-bold text-white text-sm block">VIPIZZA</span>
-            <span className="text-white/60 text-[10px] block">Homemade Padang</span>
+        {/* LOGO */}
+        <Link to="/" className="flex items-center gap-3 shrink-0 leading-none group">
+          <img 
+            src="/logo-vipizza.jpg" 
+            alt="VIPIZZA Logo" 
+            className="w-11 h-11 object-contain rounded-full shadow-sm group-hover:rotate-12 transition-transform duration-300"
+          />
+          <div className="flex flex-col text-left">
+            <span className="font-black text-2xl tracking-tight text-[#2C1810] uppercase">VIPIZZA</span>
+            <span className="text-[9px] text-[#8B3A0F] tracking-[3px] uppercase font-semibold">Homemade Padang</span>
           </div>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-6">
+        {/* DESKTOP NAV */}
+        <nav className="hidden lg:flex items-center gap-8">
           <Link to="/" className={linkClass('/')}>Home</Link>
           <Link to="/menu" className={linkClass('/menu')}>Menu</Link>
-          <Link to="/promo" className={linkClass('/promo')}>🏷️ Promo</Link>
-          <Link to="/tentang" className={linkClass('/tentang')}>Tentang Kami</Link>
+          <Link to="/promo" className={linkClass('/promo')}>Promo</Link>
+          <Link to="/tentang" className={linkClass('/tentang')}>Tentang</Link>
           <Link to="/kontak" className={linkClass('/kontak')}>Kontak</Link>
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Link to="/keranjang" className="relative p-2 text-white/80 hover:text-white transition-colors">
+        {/* RIGHT ACTIONS */}
+        <div className="flex items-center gap-4">
+          {/* Cart */}
+          <Link to="/keranjang" className="relative text-[#5C3D2E] hover:text-[#8B3A0F] transition-colors">
             <ShoppingCart className="w-5 h-5" />
             {totalItem > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-white text-[#0b5345] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-[#8B3A0F] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {totalItem}
               </span>
             )}
           </Link>
 
+          {/* Auth */}
           {user?.peran === 'admin' ? (
-            <Link
-              to="/admin"
-              className="hidden sm:inline-block bg-white text-[#0b5345] text-xs font-semibold px-4 py-1.5 rounded hover:bg-white/90 transition-colors"
-            >
-              Dashboard
+            <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 bg-[#2C1810] hover:bg-[#8B3A0F] text-white text-xs font-bold px-5 py-2.5 rounded-full transition-colors">
+              <User className="w-3.5 h-3.5" /> Dashboard Admin
             </Link>
           ) : user?.peran === 'pelanggan' ? (
-            <div className="hidden sm:flex items-center gap-2">
-              <Link to="/dashboard" className="bg-white text-[#0b5345] text-xs font-semibold px-4 py-1.5 rounded hover:bg-white/90 transition-colors">
-                Dashboard
-              </Link>
-              <Link to="/riwayat" className="text-xs text-white/80 hover:text-white">Pesanan Saya</Link>
-              <button onClick={handleLogout} className="text-xs text-white/60 hover:text-red-300 ml-1">
+            <div className="hidden sm:flex items-center gap-3">
+              <Link to="/dashboard" className="text-xs font-semibold text-[#5C3D2E] hover:text-[#8B3A0F] transition-colors">Dashboard Saya</Link>
+              <button onClick={handleLogout} className="bg-[#2C1810] hover:bg-[#8B3A0F] text-white text-xs font-bold px-5 py-2.5 rounded-full transition-colors">
                 Keluar
               </button>
             </div>
           ) : (
-            <>
-              <Link
-                to="/masuk"
-                className="hidden sm:inline-block bg-white text-[#0b5345] text-xs font-semibold px-4 py-1.5 rounded hover:bg-white/90 transition-colors"
-              >
-                Login
-              </Link>
-              <Link
-                to="/daftar"
-                className="hidden md:inline-block border border-white/50 text-white text-xs font-medium px-4 py-1.5 rounded hover:bg-white/10 transition-colors"
-              >
-                Register
-              </Link>
-            </>
+            <Link to="/masuk" className="hidden sm:inline-block bg-black hover:bg-gray-900 text-white text-sm font-extrabold px-6 py-3 rounded-full transition-colors shadow-md">
+              Order Now
+            </Link>
           )}
 
-          <button
-            className="lg:hidden p-2 text-white"
-            onClick={() => setMenuBuka(!menuBuka)}
-          >
-            {menuBuka ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
+          {/* Mobile Toggle */}
+          <button className="lg:hidden text-[#2C1810] p-1" onClick={() => setMenuBuka(!menuBuka)}>
+            {menuBuka ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
+      {/* MOBILE MENU */}
       {menuBuka && (
-        <div className="lg:hidden border-t border-white/10 bg-[#094a40] px-6 py-4 flex flex-col gap-2">
-          <Link to="/" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Home</Link>
-          <Link to="/menu" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Menu</Link>
-          <Link to="/promo" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">🏷️ Promo</Link>
-          <Link to="/tentang" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Tentang Kami</Link>
-          <Link to="/kontak" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Kontak</Link>
-          <Link to="/keranjang" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Keranjang</Link>
+        <div className="lg:hidden border-t border-[#E8DDD5] bg-[#FAF6F1] px-6 py-3 flex flex-col shadow-lg absolute w-full top-full">
+          {[
+            { to: '/', label: 'Home' },
+            { to: '/menu', label: 'Menu' },
+            { to: '/promo', label: 'Promo' },
+            { to: '/tentang', label: 'Tentang' },
+            { to: '/kontak', label: 'Kontak' },
+            { to: '/keranjang', label: 'Keranjang 🛒' },
+          ].map(({ to, label }) => (
+            <Link key={to} to={to} onClick={() => setMenuBuka(false)} className="text-sm font-bold text-[#2C1810] py-3 border-b border-[#E8DDD5] last:border-0">
+              {label}
+            </Link>
+          ))}
           {user ? (
             <>
-              <Link to="/riwayat" onClick={() => setMenuBuka(false)} className="text-sm text-white py-1">Pesanan Saya</Link>
-              <button onClick={() => { handleLogout(); setMenuBuka(false); }} className="text-sm text-red-300 text-left py-1">Keluar</button>
+              <Link to="/dashboard" onClick={() => setMenuBuka(false)} className="text-sm font-bold text-[#2C1810] py-3 border-b border-[#E8DDD5]">Dashboard Saya</Link>
+              <button onClick={() => { handleLogout(); setMenuBuka(false); }} className="text-sm font-bold text-red-600 text-left py-3">Keluar</button>
             </>
           ) : (
-            <>
-              <Link to="/masuk" onClick={() => setMenuBuka(false)} className="text-sm text-white font-semibold py-1">Login</Link>
-              <Link to="/daftar" onClick={() => setMenuBuka(false)} className="text-sm text-white/80 py-1">Register</Link>
-            </>
+            <Link to="/masuk" onClick={() => setMenuBuka(false)} className="text-sm font-bold text-[#8B3A0F] py-3">Login / Register →</Link>
           )}
         </div>
       )}

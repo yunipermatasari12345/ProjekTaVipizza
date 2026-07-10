@@ -17,5 +17,6 @@ type ItemPesanan struct {
 
 // TableName menentukan nama tabel di MySQL
 func (ItemPesanan) TableName() string {
-	return "item_pesanan"
+	return "order_items"
 }
+

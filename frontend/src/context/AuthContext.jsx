@@ -2,23 +2,74 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('vipizza_token'));
+const STORAGE_USER_KEY = 'vipizza_user';
+const STORAGE_TOKEN_KEY = 'vipizza_token';
 
-  // Ambil user dari localStorage jika ada saat reload
+// Ambil data langsung dari localStorage (sinkron) agar tidak flash ke login saat refresh
+function ambilUserAwal() {
+  try {
+    const saved = localStorage.getItem(STORAGE_USER_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch { return null; }
+}
+function ambilTokenAwal() {
+  return localStorage.getItem(STORAGE_TOKEN_KEY) || null;
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser]       = useState(ambilUserAwal);
+  const [token, setToken]     = useState(ambilTokenAwal);
+  const [isLoading, setIsLoading] = useState(true); // false setelah validasi selesai
+
+  // Validasi token ke backend saat pertama load (background)
   useEffect(() => {
-    const savedUser = localStorage.getItem('vipizza_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('vipizza_user');
-      }
+    const savedUser  = localStorage.getItem(STORAGE_USER_KEY);
+    const savedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+
+    if (!savedUser || !savedToken) {
+      setIsLoading(false);
+      return;
     }
+
+    // Token "mock" tidak perlu divalidasi ke backend
+    if (savedToken === 'mock_jwt_token_vipizza') {
+      setIsLoading(false);
+      return;
+    }
+
+    fetch('http://localhost:8080/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${savedToken}` }
+    })
+      .then(res => {
+        if (!res.ok) {
+          // Token kadaluarsa/invalid → bersihkan
+          bersihkanSession();
+        }
+        // Jika ok, user & token sudah di-set dari useState awal, tidak perlu set ulang
+      })
+      .catch(() => {
+        // Backend offline → tetap pertahankan session (demo mode)
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
-  // Real login with mock fallback
+  const simpanSession = (userData, tokenData) => {
+    setUser(userData);
+    setToken(tokenData);
+    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userData));
+    localStorage.setItem(STORAGE_TOKEN_KEY, tokenData);
+  };
+
+  const bersihkanSession = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(STORAGE_USER_KEY);
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+  };
+
+  // Login dengan real backend, fallback ke mock jika offline
   const loginSimulasi = async (email, password) => {
     try {
       const response = await fetch('http://localhost:8080/api/auth/login', {
@@ -30,18 +81,16 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         const res = await response.json();
         if (res && res.token && res.user) {
-          setUser(res.user);
-          setToken(res.token);
-          localStorage.setItem('vipizza_user', JSON.stringify(res.user));
-          localStorage.setItem('vipizza_token', res.token);
+          simpanSession(res.user, res.token);
           return res.user;
         }
       }
+      return null;
     } catch (err) {
-      console.warn("Backend API offline, falling back to mock login simulation:", err.message);
+      console.warn("Backend offline, fallback ke mock login:", err.message);
     }
 
-    // Fallback Mock simulation
+    // Fallback mock (hanya jika backend offline)
     let mockUser = {
       id: 2,
       nama: "Budi Santoso",
@@ -62,14 +111,11 @@ export function AuthProvider({ children }) {
       };
     }
 
-    setUser(mockUser);
-    setToken("mock_jwt_token_vipizza");
-    localStorage.setItem('vipizza_user', JSON.stringify(mockUser));
-    localStorage.setItem('vipizza_token', "mock_jwt_token_vipizza");
+    simpanSession(mockUser, 'mock_jwt_token_vipizza');
     return mockUser;
   };
 
-  // Real register with mock fallback
+  // Register dengan real backend, fallback ke mock jika offline
   const registerSimulasi = async (nama, email, telepon, alamat, password = "pelangganvipizza") => {
     try {
       const response = await fetch('http://localhost:8080/api/auth/register', {
@@ -79,52 +125,44 @@ export function AuthProvider({ children }) {
       });
 
       if (response.ok) {
-        // Otomatis login setelah registrasi sukses
         return loginSimulasi(email, password);
       }
+      return null;
     } catch (err) {
-      console.warn("Backend API offline, falling back to mock register simulation:", err.message);
+      console.warn("Backend offline, fallback ke mock register:", err.message);
     }
 
-    // Fallback Mock simulation
     const mockUser = {
       id: Math.floor(Math.random() * 1000) + 10,
-      nama,
-      email,
-      peran: "pelanggan",
-      telepon,
-      alamat
+      nama, email, peran: "pelanggan", telepon, alamat
     };
-    setUser(mockUser);
-    setToken("mock_jwt_token_vipizza");
-    localStorage.setItem('vipizza_user', JSON.stringify(mockUser));
-    localStorage.setItem('vipizza_token', "mock_jwt_token_vipizza");
+    simpanSession(mockUser, 'mock_jwt_token_vipizza');
     return mockUser;
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('vipizza_user');
-    localStorage.removeItem('vipizza_token');
+    bersihkanSession();
   };
 
-  // Helper untuk beralih peran dengan cepat (sangat berguna untuk demo Tugas Akhir!)
   const alihkanPeran = () => {
     if (!user) return;
     const peranBaru = user.peran === 'admin' ? 'pelanggan' : 'admin';
     const userBaru = {
       ...user,
       nama: peranBaru === 'admin' ? "Admin Vipizza" : "Budi Santoso",
-      email: peranBaru === 'admin' ? "admin@vipizza.com" : "budi@gmail.com",
+      email: peranBaru === 'admin' ? "admin@vipizza.com" : "budi@vipizza.com",
       peran: peranBaru,
     };
-    setUser(userBaru);
-    localStorage.setItem('vipizza_user', JSON.stringify(userBaru));
+    simpanSession(userBaru, token);
+  };
+
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userData));
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login: loginSimulasi, register: registerSimulasi, logout, alihkanPeran }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login: loginSimulasi, register: registerSimulasi, logout, alihkanPeran, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

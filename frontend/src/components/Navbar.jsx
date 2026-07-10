@@ -36,12 +36,16 @@ export default function Navbar() {
         {/* Kiri: Brand & Logo */}
         <div className="flex items-center">
           <Link to="/" className="flex items-center gap-3 group">
-            <Logo className="w-10 h-10 group-hover:rotate-12 transition-transform duration-300" />
+            <img 
+              src="/logo-vipizza.jpg" 
+              alt="VIPIZZA Logo" 
+              className="w-10 h-10 object-contain rounded-full shadow-sm group-hover:rotate-12 transition-transform duration-300"
+            />
             <div className="flex flex-col text-left">
               <span className="font-serif font-bold text-lg md:text-xl tracking-tight text-slate-800 leading-none">
                 VIPIZZA
               </span>
-              <span className="text-[9px] tracking-widest text-pink-500 font-bold uppercase leading-none mt-1">
+              <span className="text-[9px] tracking-widest text-[#8B3A0F] font-bold uppercase leading-none mt-1">
                 Homemade Padang
               </span>
             </div>

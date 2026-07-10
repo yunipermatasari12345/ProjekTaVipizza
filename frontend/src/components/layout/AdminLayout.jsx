@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Swal from 'sweetalert2';
 import {
   LayoutDashboard,
   Pizza,
@@ -13,13 +14,20 @@ import {
   Menu,
   X,
   Bell,
-  Settings,
+  Users,
+  User,
+  Layers,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, isLoading } = useAuth();
+  const [jumlahPesananBaru, setJumlahPesananBaru] = useState(0);
+  const [jumlahPesanPelanggan, setJumlahPesanPelanggan] = useState(0);
+  const prevPesananRef = useRef(0);
+  const prevPesanRef = useRef(0);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
@@ -33,6 +41,77 @@ export default function AdminLayout() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Polling: cek pesanan baru & pesan pelanggan belum dibaca setiap 30 detik
+  useEffect(() => {
+    if (!token || !user || user.peran !== 'admin') return;
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    const cekNotifikasi = async () => {
+      try {
+        const [ordRes, pesanRes] = await Promise.all([
+          fetch('http://localhost:8080/api/orders', { headers }),
+          fetch('http://localhost:8080/api/pesan-pelanggan', { headers }),
+        ]);
+        if (ordRes.ok) {
+          const orders = await ordRes.json();
+          const menunygu = Array.isArray(orders)
+            ? orders.filter(o => o.status === 'menunggu_pembayaran' || o.status === 'menunggu_validasi').length
+            : 0;
+          if (menunygu > prevPesananRef.current) {
+            Swal.fire({
+              icon: 'info',
+              title: '🍕 Pesanan Baru!',
+              text: `Ada ${menunygu} pesanan yang perlu diproses.`,
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 5000,
+              timerProgressBar: true,
+            });
+          }
+          prevPesananRef.current = menunygu;
+          setJumlahPesananBaru(menunygu);
+        }
+        if (pesanRes.ok) {
+          const pesanList = await pesanRes.json();
+          const belumDibalas = Array.isArray(pesanList)
+            ? pesanList.filter(p => !p.balasan).length
+            : 0;
+          if (belumDibalas > prevPesanRef.current) {
+            Swal.fire({
+              icon: 'info',
+              title: '💬 Pesan Baru!',
+              text: `Ada ${belumDibalas} pertanyaan pelanggan belum dibalas.`,
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 4000,
+              timerProgressBar: true,
+            });
+          }
+          prevPesanRef.current = belumDibalas;
+          setJumlahPesanPelanggan(belumDibalas);
+        }
+      } catch { /* backend offline */ }
+    };
+
+    cekNotifikasi();
+    const interval = setInterval(cekNotifikasi, 30000);
+    return () => clearInterval(interval);
+  }, [token, user]);
+
+  // Tampilkan loading spinner saat auth masih divalidasi
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Memeriksa sesi...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!token || !user) return <Navigate to="/masuk" replace />;
   if (user.peran !== 'admin') return <Navigate to="/menu" replace />;
@@ -55,18 +134,27 @@ export default function AdminLayout() {
       ],
     },
     {
-      label: 'MANAJEMEN',
+      label: 'MASTER DATA',
       items: [
-        { to: '/admin/kelola-menu', icon: Pizza, label: 'Kelola Menu' },
-        { to: '/admin/kelola-promo', icon: Tag, label: 'Kelola Promo' },
-        { to: '/admin/validasi-pesanan', icon: ShoppingBag, label: 'Pesanan Masuk' },
-        { to: '/admin/laporan', icon: FileText, label: 'Laporan' },
+        { to: '/admin/kelola-menu', icon: Pizza, label: 'Data Menu' },
+        { to: '/admin/kelola-kategori', icon: Layers, label: 'Kategori Menu' },
+        { to: '/admin/kelola-promo', icon: Tag, label: 'Kode Promo' },
+      ],
+    },
+    {
+      label: 'TRANSAKSI',
+      items: [
+        { to: '/admin/pesanan', icon: ShoppingBag, label: 'Data Pesanan', badge: jumlahPesananBaru },
+        { to: '/admin/laporan', icon: FileText, label: 'Laporan Penjualan' },
       ],
     },
     {
       label: 'LAINNYA',
       items: [
-        { to: '/', icon: Home, label: 'Lihat Website', external: true },
+        { to: '/admin/pelanggan', icon: Users, label: 'Pelanggan' },
+        { to: '/admin/pesan-pelanggan', icon: MessageSquare, label: 'Pesan Pelanggan', badge: jumlahPesanPelanggan },
+        { to: '/admin/profil', icon: User, label: 'Profil' },
+        { to: '/', icon: Home, label: 'Lihat Website' },
       ],
     },
   ];
@@ -74,10 +162,14 @@ export default function AdminLayout() {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/admin') return 'Dashboard';
-    if (path.includes('kelola-menu')) return 'Kelola Menu';
-    if (path.includes('kelola-promo')) return 'Kelola Promo';
-    if (path.includes('validasi-pesanan')) return 'Pesanan Masuk';
-    if (path.includes('laporan')) return 'Laporan';
+    if (path.includes('kelola-menu')) return 'Data Menu';
+    if (path.includes('kelola-kategori')) return 'Kategori Menu';
+    if (path.includes('kelola-promo')) return 'Kode Promo';
+    if (path.includes('pesanan')) return 'Data Pesanan';
+    if (path.includes('laporan')) return 'Laporan Penjualan';
+    if (path.includes('pesan-pelanggan')) return 'Pesan Pelanggan';
+    if (path.includes('pelanggan')) return 'Pelanggan';
+    if (path.includes('profil')) return 'Profil';
     return 'Admin Panel';
   };
 
@@ -87,9 +179,12 @@ export default function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar--open' : 'admin-sidebar--closed'}`}>
         {/* Brand */}
         <div className="admin-sidebar__brand">
-          <div className="admin-sidebar__brand-logo">
-            <Pizza className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src="/logo-vipizza.jpg" 
+            alt="Logo" 
+            className="w-12 h-12 rounded-full object-cover border-2 border-amber-500 shadow-md hover:rotate-12 transition-transform duration-300 cursor-pointer"
+            onClick={() => navigate('/')}
+          />
           {sidebarOpen && (
             <div>
               <span className="admin-sidebar__brand-name">VIPIZZA</span>
@@ -105,7 +200,7 @@ export default function AdminLayout() {
               {sidebarOpen && (
                 <p className="admin-sidebar__group-label">{group.label}</p>
               )}
-              {group.items.map(({ to, icon: Icon, label }) => (
+              {group.items.map(({ to, icon: Icon, label, badge }) => (
                 <Link
                   key={to}
                   to={to}
@@ -114,7 +209,15 @@ export default function AdminLayout() {
                 >
                   <Icon className="admin-sidebar__link-icon" />
                   {sidebarOpen && <span className="admin-sidebar__link-text">{label}</span>}
-                  {sidebarOpen && aktif(to) && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-70" />}
+                  {badge > 0 && sidebarOpen && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                      {badge}
+                    </span>
+                  )}
+                  {badge > 0 && !sidebarOpen && (
+                    <span className="absolute right-1 top-1 w-2 h-2 rounded-full bg-red-500" />
+                  )}
+                  {sidebarOpen && !badge && aktif(to) && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-70" />}
                 </Link>
               ))}
             </div>
@@ -171,10 +274,14 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="admin-topbar__right">
-            <button className="admin-topbar__icon-btn" title="Notifikasi">
+            <Link to="/admin/pesanan" className="admin-topbar__icon-btn relative" title="Pesanan Menunggu">
               <Bell className="w-4.5 h-4.5" />
-              <span className="admin-topbar__notif-dot" />
-            </button>
+              {jumlahPesananBaru > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                  {jumlahPesananBaru}
+                </span>
+              )}
+            </Link>
             <div className="admin-topbar__user">
               <div className="admin-topbar__user-avatar">
                 {user?.nama?.[0]?.toUpperCase() || 'A'}

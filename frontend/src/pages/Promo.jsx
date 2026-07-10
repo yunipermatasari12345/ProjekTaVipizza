@@ -35,19 +35,10 @@ export default function Promo() {
 
   return (
     <div>
-      <PageHero
-        title="Promo & Diskon"
-        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Promo' }]}
-      />
 
       <section className="py-12 bg-[#f8f9fa]">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="section-heading">
-            <h2>Promo Spesial Vipizza</h2>
-            <p className="text-[#6c757d] text-sm mt-2">
-              Dapatkan penawaran terbaik pizza homemade Padang. Salin kode promo dan gunakan saat checkout!
-            </p>
-          </div>
+
 
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -77,7 +68,7 @@ export default function Promo() {
                     )}
 
                     {/* Banner */}
-                    <div className="h-36 bg-gradient-to-br from-[#0b5345] to-[#1a7a61] relative overflow-hidden">
+                    <div className="h-56 bg-gradient-to-br from-[#0b5345] to-[#1a7a61] relative overflow-hidden">
                       {promo.banner_url ? (
                         <img
                           src={`http://localhost:8080${promo.banner_url}`}
