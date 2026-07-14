@@ -453,6 +453,31 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 
 	tx.Commit()
 
+	// NOTIFIKASI WA PELANGGAN AMAN (Berjalan di background, tidak bikin error)
+	go func(p models.Pesanan, statBaru string) {
+		var pesanWA string
+		namaPelanggan := "Pelanggan Setia"
+		
+		// Ambil data pelanggan asli
+		var peng models.Pengguna
+		config.DB.First(&peng, p.PenggunaID)
+		if peng.Nama != "" {
+			namaPelanggan = peng.Nama
+		}
+
+		if statBaru == "diproses" {
+			pesanWA = fmt.Sprintf("Halo %s! 👋\n\nPesanan #%d kamu di Vipizza Padang sudah divalidasi dan sekarang sedang *diproses / dipanggang*. Ditunggu ya, pizza enak segera siap! 🍕🔥", namaPelanggan, p.ID)
+		} else if statBaru == "dikirim" {
+			pesanWA = fmt.Sprintf("Halo %s! 🛵\n\nPesanan pizza #%d kamu sudah di jalan menuju alamatmu. Siap-siap menikmati ya! 🍕", namaPelanggan, p.ID)
+		} else if statBaru == "selesai" {
+			pesanWA = fmt.Sprintf("Halo %s! ✅\n\nPesanan #%d telah diselesaikan. Terima kasih sudah memesan di Vipizza Padang! Ditunggu pesanan selanjutnya 🍕🥰", namaPelanggan, p.ID)
+		}
+
+		if pesanWA != "" && p.Telepon != "" {
+			utils.KirimNotifikasiPelanggan(p.Telepon, pesanWA)
+		}
+	}(pesanan, statusBaru)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Status pesanan #%d berhasil diperbarui menjadi '%s'!", pesanan.ID, statusBaru),
 		"pesanan": pesanan,
@@ -595,6 +620,11 @@ func prosesStatusDariMidtrans(pesanan *models.Pesanan) {
 		} else if newStatus == "dibatalkan" {
 			pesanan.StatusPembayaran = "gagal"
 		}
+		
+		if transactionStatusResp.PaymentType != "" {
+			pesanan.MetodePembayaran = transactionStatusResp.PaymentType
+		}
+
 		config.DB.Save(pesanan)
 
 		if newStatus == "diproses" {
@@ -602,6 +632,9 @@ func prosesStatusDariMidtrans(pesanan *models.Pesanan) {
 		}
 	} else if statusTrans == "settlement" && pesanan.Status == "diproses" {
 		pesanan.StatusPembayaran = "lunas"
+		if transactionStatusResp.PaymentType != "" {
+			pesanan.MetodePembayaran = transactionStatusResp.PaymentType
+		}
 		config.DB.Save(pesanan)
 	}
 }
@@ -662,4 +695,22 @@ func MidtransNotification(c *gin.Context) {
 	prosesStatusDariMidtrans(&pesanan)
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// HapusPesanan menghapus data pesanan dari database (Khusus Admin)
+func HapusPesanan(c *gin.Context) {
+	id := c.Param("id")
+	var pesanan models.Pesanan
+
+	if err := config.DB.First(&pesanan, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pesanan tidak ditemukan"})
+		return
+	}
+
+	if err := config.DB.Delete(&pesanan).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus pesanan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pesanan berhasil dihapus"})
 }

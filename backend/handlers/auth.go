@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 	"vipizza/config"
 	"vipizza/models"
 	"vipizza/utils"
@@ -22,6 +25,11 @@ type RegistrasiRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+// LupaPasswordRequest struktur input untuk lupa password
+type LupaPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
 }
 
 // Registrasi mendaftarkan akun pelanggan baru
@@ -107,6 +115,44 @@ func Login(c *gin.Context) {
 			"alamat":  pengguna.Alamat,
 		},
 	})
+}
+
+// LupaPassword memproses reset password dan mengirim via WhatsApp
+func LupaPassword(c *gin.Context) {
+	var req LupaPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email wajib diisi dan valid"})
+		return
+	}
+
+	var pengguna models.Pengguna
+	if err := config.DB.Where("email = ?", req.Email).First(&pengguna).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Email tidak terdaftar di sistem kami!"})
+		return
+	}
+
+	// Generate password baru acak (6 digit)
+	rand.Seed(time.Now().UnixNano())
+	passwordBaru := fmt.Sprintf("%06d", rand.Intn(1000000))
+	
+	// Hash password
+	passwordHashed, err := utils.HashPassword(passwordBaru)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat password baru"})
+		return
+	}
+
+	// Update password di DB
+	config.DB.Model(&pengguna).Update("password", passwordHashed)
+
+	// Kirim pesan WhatsApp
+	pesan := fmt.Sprintf("Halo *%s*,\n\nSistem kami menerima permintaan reset password untuk akun ViPizza Anda.\n\nPassword Baru Anda: *%s*\n\nSilakan gunakan password ini untuk login, dan pastikan Anda segera mengubahnya di halaman Profil demi keamanan.\n\nTerima kasih,\nTim ViPizza", pengguna.Nama, passwordBaru)
+	
+	if pengguna.Telepon != "" {
+		go utils.KirimNotifikasiPelanggan(pengguna.Telepon, pesan)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Berhasil. Password baru telah dikirimkan ke WhatsApp Anda yang terdaftar."})
 }
 
 // GetProfil mengambil informasi profil pengguna yang sedang login
@@ -195,13 +241,88 @@ func ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diubah"})
 }
 
-func AmbilSemuaPelanggan(c *gin.Context) {
-	var pelanggan []models.Pengguna
-	if err := config.DB.Where("peran = ?", "pelanggan").Order("id desc").Find(&pelanggan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pelanggan"})
+func AmbilSemuaPengguna(c *gin.Context) {
+	var pengguna []models.Pengguna
+	if err := config.DB.Order("id desc").Find(&pengguna).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pengguna"})
 		return
 	}
-	c.JSON(http.StatusOK, pelanggan)
+	c.JSON(http.StatusOK, pengguna)
+}
+
+func TambahPengguna(c *gin.Context) {
+	var req RegistrasiRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	var penggunaAda models.Pengguna
+	if err := config.DB.Where("email = ?", req.Email).First(&penggunaAda).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah terdaftar!"})
+		return
+	}
+
+	passwordHashed, _ := utils.HashPassword(req.Password)
+	peran := c.Query("peran")
+	if peran != "admin" {
+		peran = "pelanggan"
+	}
+
+	penggunaBaru := models.Pengguna{
+		Nama:     req.Nama,
+		Email:    req.Email,
+		Password: passwordHashed,
+		Peran:    peran,
+		Telepon:  req.Telepon,
+		Alamat:   req.Alamat,
+	}
+
+	if err := config.DB.Create(&penggunaBaru).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menambah pengguna"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Berhasil menambah pengguna"})
+}
+
+func EditPengguna(c *gin.Context) {
+	id := c.Param("id")
+	var req UpdateProfilInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	var pengguna models.Pengguna
+	if err := config.DB.First(&pengguna, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pengguna tidak ditemukan"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if req.Nama != "" {
+		updates["nama"] = req.Nama
+	}
+	if req.Telepon != "" {
+		updates["telepon"] = req.Telepon
+	}
+	if req.Alamat != "" {
+		updates["alamat"] = req.Alamat
+	}
+
+	config.DB.Model(&pengguna).Updates(updates)
+	c.JSON(http.StatusOK, gin.H{"message": "Pengguna berhasil diperbarui"})
+}
+
+func HapusPengguna(c *gin.Context) {
+	id := c.Param("id")
+	var pengguna models.Pengguna
+	if err := config.DB.First(&pengguna, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pengguna tidak ditemukan"})
+		return
+	}
+	config.DB.Delete(&pengguna)
+	c.JSON(http.StatusOK, gin.H{"message": "Pengguna berhasil dihapus"})
 }
 
 func AmbilDetailPelanggan(c *gin.Context) {

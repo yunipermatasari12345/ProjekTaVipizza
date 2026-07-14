@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"vipizza/config"
 	"vipizza/models"
@@ -175,9 +176,7 @@ func LaporanPenjualanPDF(c *gin.Context) {
 		if pes.Status == "diproses" { statusOrder = "Diproses" }
 		pdf.CellFormat(w[4], 8, statusOrder, "1", 0, "C", false, 0, "")
 		
-		metodeStr := "Transfer Bank"
-		if pes.MetodePembayaran == "qris" { metodeStr = "QRIS" }
-		if pes.MetodePembayaran == "tunai" { metodeStr = "Cash" }
+		metodeStr := strings.ToUpper(pes.MetodePembayaran)
 		pdf.CellFormat(w[5], 8, metodeStr, "1", 0, "C", false, 0, "")
 		
 		statusBayar := "Paid"

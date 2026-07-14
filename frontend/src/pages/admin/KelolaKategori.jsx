@@ -11,7 +11,7 @@ export default function KelolaKategori() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ nama: '', deskripsi: '', aktif: true });
 
-  const API = 'http://localhost:8080/api';
+  const API = 'http://localhost:9000/api';
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 

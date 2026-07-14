@@ -20,12 +20,18 @@ export default function Kontak() {
       setEmail(user.email || '');
     }
     muatRiwayat();
+    
+    // Auto-refresh (Polling) setiap 5 detik
+    const interval = setInterval(() => {
+      muatRiwayat();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const muatRiwayat = () => {
     // Coba ambil dari backend dulu
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    fetch('http://localhost:8080/api/pesan-pelanggan', { headers })
+    fetch('http://localhost:9000/api/pesan-pelanggan', { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -64,7 +70,7 @@ export default function Kontak() {
 
     // Coba kirim ke backend
     try {
-      const res = await fetch('http://localhost:8080/api/pesan-pelanggan', {
+      const res = await fetch('http://localhost:9000/api/pesan-pelanggan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ nama, email, pertanyaan, pengguna_id: user?.id || null }),

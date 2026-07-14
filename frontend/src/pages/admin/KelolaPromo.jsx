@@ -21,7 +21,7 @@ export default function KelolaPromo() {
 
   const muatPromo = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/promo/admin', {
+      const res = await fetch('http://localhost:9000/api/promo/admin', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -52,7 +52,7 @@ export default function KelolaPromo() {
   const handleBukaEdit = (p) => {
     setPromoTerpilih(p);
     setSelectedFile(null);
-    setPreviewUrl(p.banner_url ? `http://localhost:8080${p.banner_url}` : null);
+    setPreviewUrl(p.banner_url ? `http://localhost:9000${p.banner_url}` : null);
     setFormData({
       judul: p.judul, deskripsi: p.deskripsi, kode_promo: p.kode_promo,
       diskon: p.diskon.toString(),
@@ -88,7 +88,7 @@ export default function KelolaPromo() {
     fd.append('aktif', formData.aktif ? 'true' : 'false');
     if (selectedFile) fd.append('banner', selectedFile);
 
-    const apiURL = promoTerpilih ? `http://localhost:8080/api/promo/${promoTerpilih.id}` : 'http://localhost:8080/api/promo';
+    const apiURL = promoTerpilih ? `http://localhost:9000/api/promo/${promoTerpilih.id}` : 'http://localhost:9000/api/promo';
     const apiMethod = promoTerpilih ? 'PUT' : 'POST';
 
     try {
@@ -119,7 +119,7 @@ export default function KelolaPromo() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`http://localhost:8080/api/promo/${id}`, {
+          const res = await fetch(`http://localhost:9000/api/promo/${id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -295,7 +295,7 @@ export default function KelolaPromo() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           {p.banner_url ? (
-                            <img src={`http://localhost:8080${p.banner_url}`} alt={p.judul} className="w-16 h-10 object-cover rounded border border-gray-200 mx-auto" />
+                            <img src={`http://localhost:9000${p.banner_url}`} alt={p.judul} className="w-16 h-10 object-cover rounded border border-gray-200 mx-auto" />
                           ) : (
                             <span className="text-gray-400 text-xs">-</span>
                           )}

@@ -26,7 +26,7 @@ export default function ManageMenu() {
   useEffect(() => { muatMenu(); }, []);
 
   const muatMenu = () => {
-    fetch('http://localhost:8080/api/menus')
+    fetch('http://localhost:9000/api/menus')
       .then(res => {
         if (!res.ok) throw new Error('Gagal load API');
         return res.json();
@@ -92,7 +92,7 @@ export default function ManageMenu() {
     formData.append('is_best_seller', isBestSeller.toString());
     if (fileObj) formData.append('gambar', fileObj);
 
-    const apiURL    = menuTerpilih ? `http://localhost:8080/api/menus/${menuTerpilih.id}` : 'http://localhost:8080/api/menus';
+    const apiURL    = menuTerpilih ? `http://localhost:9000/api/menus/${menuTerpilih.id}` : 'http://localhost:9000/api/menus';
     const apiMethod = menuTerpilih ? 'PUT' : 'POST';
 
     fetch(apiURL, {
@@ -122,7 +122,7 @@ export default function ManageMenu() {
       confirmButtonText: 'Ya, Hapus!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`http://localhost:8080/api/menus/${id}`, {
+        fetch(`http://localhost:9000/api/menus/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })

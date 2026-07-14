@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   DollarSign, ClipboardList, Package, Users, Tag, Clock, Eye, X,
-  Search, RefreshCw, ShoppingBag, CheckCircle2, TrendingUp
+  Search, RefreshCw, ShoppingBag, CheckCircle2, TrendingUp, Trash2
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const STATUS_CONFIG = {
   menunggu_pembayaran: { label: 'Menunggu Bayar', color: '#ffc107', bg: '#fff8e1', text: '#856404' },
@@ -16,7 +17,7 @@ const STATUS_CONFIG = {
 
 export default function Dashboard() {
   const { token } = useAuth();
-  const API = 'http://localhost:8080/api';
+  const API = 'http://localhost:9000/api';
   const headers = { 'Authorization': `Bearer ${token}` };
 
   const [summary, setSummary] = useState(null);
@@ -63,6 +64,38 @@ export default function Dashboard() {
     } catch (e) {
       console.warn(e);
     }
+  };
+
+  const handleDelete = async (id) => {
+    Swal.fire({
+      title: 'Hapus Pesanan?',
+      text: `Yakin ingin menghapus pesanan #${id}? Data yang dihapus tidak bisa dikembalikan.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch(`${API}/orders/${id}`, {
+            method: 'DELETE',
+            headers
+          });
+          if (res.ok) {
+            Swal.fire('Terhapus!', 'Data pesanan telah dihapus.', 'success');
+            ambilData();
+          } else {
+            const data = await res.json();
+            Swal.fire('Gagal!', data.error || 'Gagal menghapus pesanan', 'error');
+          }
+        } catch (e) {
+          console.warn(e);
+          Swal.fire('Error!', 'Terjadi kesalahan saat menghapus pesanan', 'error');
+        }
+      }
+    });
   };
 
   const formatRp = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
@@ -158,7 +191,10 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button onClick={() => setDetail(p)} className="p-1.5 border border-gray-300 rounded hover:bg-gray-100"><Eye className="w-3.5 h-3.5 text-blue-600" /></button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button onClick={() => setDetail(p)} className="p-1.5 border border-gray-300 rounded hover:bg-gray-100 text-blue-600" title="Detail"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(p.id)} className="p-1.5 border border-gray-300 rounded hover:bg-red-50 text-red-600" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -193,7 +229,7 @@ export default function Dashboard() {
             {detail.bukti_pembayaran && (
               <div className="mb-4">
                 <p className="text-xs font-bold text-gray-600 mb-1">Bukti Pembayaran</p>
-                <img src={detail.bukti_pembayaran.startsWith('http') ? detail.bukti_pembayaran : `http://localhost:8080${detail.bukti_pembayaran}`} alt="Bukti" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
+                <img src={detail.bukti_pembayaran.startsWith('http') ? detail.bukti_pembayaran : `http://localhost:9000${detail.bukti_pembayaran}`} alt="Bukti" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
               </div>
             )}
 
@@ -206,8 +242,35 @@ export default function Dashboard() {
                     <span className="font-bold">{formatRp(item.harga * item.jumlah)}</span>
                   </div>
                 ))}
+                
+                {(() => {
+                    const subtotal = detail.item_pesanan.reduce((sum, item) => sum + (item.harga * item.jumlah), 0);
+                    const diskon = detail.diskon || 0;
+                    const ongkir = detail.total_harga + diskon - subtotal;
+                    return (
+                      <div className="mt-2 pt-2 border-t border-gray-100 text-sm">
+                        <div className="flex justify-between py-1">
+                            <span className="text-gray-500">Subtotal</span>
+                            <span>{formatRp(subtotal)}</span>
+                        </div>
+                        {ongkir > 0 && (
+                          <div className="flex justify-between py-1">
+                              <span className="text-gray-500">Ongkos Kirim</span>
+                              <span>{formatRp(ongkir)}</span>
+                          </div>
+                        )}
+                        {diskon > 0 && (
+                          <div className="flex justify-between py-1 text-green-600">
+                              <span>Diskon {detail.kode_promo ? `(${detail.kode_promo})` : ''}</span>
+                              <span>-{formatRp(diskon)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                })()}
+
                 <div className="flex justify-between text-sm font-bold mt-2 pt-2 border-t border-gray-200">
-                  <span>Total</span><span>{formatRp(detail.total_harga)}</span>
+                  <span>Total Akhir</span><span className="text-orange-600">{formatRp(detail.total_harga)}</span>
                 </div>
               </div>
             )}

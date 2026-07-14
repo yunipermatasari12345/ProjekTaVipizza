@@ -41,7 +41,7 @@ export default function TrackOrder() {
       // Coba ambil dari REST API Backend
       if (token) {
         try {
-          const response = await fetch(`http://localhost:8080/api/orders/${id}`, {
+          const response = await fetch(`http://localhost:9000/api/orders/${id}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -59,7 +59,7 @@ export default function TrackOrder() {
                 alamat_pengiriman: data.alamat_pengiriman,
                 telepon: data.telepon,
                 metode_pembayaran: data.metode_pembayaran,
-                bukti_pembayaran: data.bukti_pembayaran ? `http://localhost:8080${data.bukti_pembayaran}` : "",
+                bukti_pembayaran: data.bukti_pembayaran ? `http://localhost:9000${data.bukti_pembayaran}` : "",
                 nama_bank: data.nama_bank || "",
                 nama_pengirim: data.nama_pengirim || "",
                 snap_token: data.snap_token || "",
@@ -122,12 +122,48 @@ export default function TrackOrder() {
     muatPesanan();
   }, [id, token]);
 
+  // Auto-refresh polling untuk cek perubahan status (Notifikasi Demo)
+  useEffect(() => {
+    if (!token || !id) return;
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`http://localhost:9000/api/orders/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPesanan(prev => {
+            if (prev && prev.status !== data.status) {
+              // Tampilkan SweetAlert notifikasi perubahan status
+              if (data.status === 'diproses') {
+                Swal.fire({ icon: 'success', title: 'Hore! 🎉', text: 'Pesananmu telah divalidasi Admin dan sedang diproses!', timer: 4000, showConfirmButton: false });
+              } else if (data.status === 'dikirim') {
+                Swal.fire({ icon: 'info', title: 'Pesanan Dikirim! 🛵', text: 'Pizza pesananmu sudah di jalan, harap tunggu ya.', timer: 4000, showConfirmButton: false });
+              } else if (data.status === 'selesai') {
+                Swal.fire({ icon: 'success', title: 'Selesai! ✅', text: 'Pesanan telah selesai. Selamat menikmati Pizza-nya!', timer: 4000, showConfirmButton: false });
+              } else if (data.status === 'dibatalkan') {
+                Swal.fire({ icon: 'error', title: 'Oops! ❌', text: 'Pesananmu dibatalkan oleh Admin.', timer: 4000, showConfirmButton: false });
+              }
+              // Update state agar UI Stepper berubah otomatis
+              return { ...prev, status: data.status, status_pembayaran: data.status_pembayaran || prev.status_pembayaran };
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        // Silent fallback (kalau sedang error jaringan, diam saja)
+      }
+    }, 5000); // Mengecek status pesanan setiap 5 detik
+
+    return () => clearInterval(interval);
+  }, [id, token]);
+
   // Fungsi untuk refresh snap token yang sudah kadaluarsa
   const handleRefreshToken = async () => {
     if (!token || isRefreshingToken) return;
     setIsRefreshingToken(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/orders/${id}/refresh-token`, {
+      const response = await fetch(`http://localhost:9000/api/orders/${id}/refresh-token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -138,7 +174,7 @@ export default function TrackOrder() {
         if (window.snap) {
           window.snap.pay(data.snap_token, {
             onSuccess: function() { 
-              fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+              fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token }
               }).catch(function(){});
@@ -169,7 +205,7 @@ export default function TrackOrder() {
     if (window.snap && tokenPakai) {
       window.snap.pay(tokenPakai, {
         onSuccess: function() {
-          fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+          fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token }
           }).catch(function(){});
@@ -213,7 +249,7 @@ export default function TrackOrder() {
 
     setVerifikasiLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/orders/' + id + '/verify-payment', {
+      const response = await fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token
@@ -263,7 +299,7 @@ export default function TrackOrder() {
         formData.append("nama_bank", namaBank);
         formData.append("nama_pengirim", namaPengirim);
 
-        const response = await fetch(`http://localhost:8080/api/orders/${id}/payment`, {
+        const response = await fetch(`http://localhost:9000/api/orders/${id}/payment`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -274,7 +310,7 @@ export default function TrackOrder() {
         if (response.ok) {
           const res = await response.json();
           if (res && res.bukti_pembayaran_url) {
-            finalGambarURL = `http://localhost:8080${res.bukti_pembayaran_url}`;
+            finalGambarURL = `http://localhost:9000${res.bukti_pembayaran_url}`;
             databaseSuccess = true;
           }
         } else {

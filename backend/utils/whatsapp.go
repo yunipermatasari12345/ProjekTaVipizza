@@ -202,3 +202,34 @@ func CekKonfigurasiWA() map[string]interface{} {
 		"nomor_admin":     ambilEnv("ADMIN_WA", "6281234567890"),
 	}
 }
+
+// KirimNotifikasiPelanggan mengirim pesan WA ke nomor spesifik pelanggan
+func KirimNotifikasiPelanggan(nomor string, pesan string) {
+	// Format nomor ke format 62 jika belum
+	nomor = strings.TrimPrefix(nomor, "+")
+	nomor = strings.TrimPrefix(nomor, "0")
+	if !strings.HasPrefix(nomor, "62") {
+		nomor = "62" + nomor
+	}
+
+	// Coba Fonnte terlebih dahulu
+	tokenFonnte := os.Getenv("FONNTE_TOKEN")
+	if tokenFonnte != "" {
+		if err := kirimViaFonnte(nomor, pesan, tokenFonnte); err == nil {
+			fmt.Printf("[WA Pelanggan] Notifikasi terkirim ke %s\n", nomor)
+			return
+		}
+	}
+
+	// Fallback CallMeBot
+	apiKeyCallMeBot := os.Getenv("CALLMEBOT_APIKEY")
+	if apiKeyCallMeBot != "" {
+		if err := kirimViaCallMeBot(nomor, pesan, apiKeyCallMeBot); err == nil {
+			fmt.Printf("[WA Pelanggan] Notifikasi terkirim via CallMeBot ke %s\n", nomor)
+			return
+		}
+	}
+
+	// Jika API gagal atau belum diset, cetak simulasi ke konsol agar tidak error
+	fmt.Printf("[WA Pelanggan (SIMULASI - API belum diset)] Mengirim pesan ke %s:\n%s\n", nomor, pesan)
+}

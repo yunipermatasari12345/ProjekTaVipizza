@@ -15,10 +15,10 @@ export default function PesanPelanggan() {
 
   const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const muatPesan = async () => {
-    setLoading(true);
+  const muatPesan = async (isAutoRefresh = false) => {
+    if (!isAutoRefresh) setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/pesan-pelanggan', { headers });
+      const res = await fetch('http://localhost:9000/api/pesan-pelanggan', { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -37,7 +37,13 @@ export default function PesanPelanggan() {
     setLoading(false);
   };
 
-  useEffect(() => { muatPesan(); }, []);
+  useEffect(() => { 
+    muatPesan(); 
+    const interval = setInterval(() => {
+      muatPesan(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleBalas = async () => {
     if (!balasanText.trim()) {
@@ -51,7 +57,7 @@ export default function PesanPelanggan() {
     // Coba kirim ke backend
     let berhasil = false;
     try {
-      const res = await fetch(`http://localhost:8080/api/pesan-pelanggan/${pesanId}/balas`, {
+      const res = await fetch(`http://localhost:9000/api/pesan-pelanggan/${pesanId}/balas`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ balasan: balasanText }),
@@ -91,7 +97,7 @@ export default function PesanPelanggan() {
       if (!result.isConfirmed) return;
 
       try {
-        await fetch(`http://localhost:8080/api/pesan-pelanggan/${id}`, { method: 'DELETE', headers });
+        await fetch(`http://localhost:9000/api/pesan-pelanggan/${id}`, { method: 'DELETE', headers });
       } catch { /* ignore */ }
 
       const lokal = JSON.parse(localStorage.getItem('vipizza_pesan_kontak') || '[]');

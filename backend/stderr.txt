@@ -1,4 +1,0 @@
-2026/07/09 11:08:19 [INFO] Midtrans terhubung pada environment: sandbox
-[GIN-debug] [ERROR] listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
-2026/07/09 11:08:20 Gagal menjalankan server Gin: listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
-exit status 1

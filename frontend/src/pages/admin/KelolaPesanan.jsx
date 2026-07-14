@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, CheckCircle2, X } from 'lucide-react';
+import { Search, Eye, CheckCircle2, X, Edit, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function KelolaPesanan() {
@@ -13,7 +13,7 @@ export default function KelolaPesanan() {
 
   const muatPesanan = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/orders', {
+      const res = await fetch('http://localhost:9000/api/orders', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -26,11 +26,17 @@ export default function KelolaPesanan() {
     setLoading(false);
   }, [token]);
 
-  useEffect(() => { muatPesanan(); }, [muatPesanan]);
+  useEffect(() => { 
+    muatPesanan(); 
+    const interval = setInterval(() => {
+      muatPesanan();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [muatPesanan]);
 
   const handleUpdateStatus = async (id, statusBaru) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/orders/${id}/status`, {
+      const res = await fetch(`http://localhost:9000/api/orders/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -48,6 +54,36 @@ export default function KelolaPesanan() {
     }
     setModalBuka(false);
     setPesananTerpilih(null);
+  };
+
+  const handleDeletePesanan = async (id) => {
+    Swal.fire({
+      title: 'Hapus Pesanan?',
+      text: "Data yang dihapus tidak bisa dikembalikan!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch(`http://localhost:9000/api/orders/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            Swal.fire('Terhapus!', 'Data pesanan telah dihapus.', 'success');
+            muatPesanan();
+          } else {
+            Swal.fire('Gagal!', 'Terjadi kesalahan saat menghapus.', 'error');
+          }
+        } catch (err) {
+          console.warn('Gagal hapus:', err);
+        }
+      }
+    });
   };
 
   const getStatusPembayaranBadge = (statusBayar) => {
@@ -114,7 +150,7 @@ export default function KelolaPesanan() {
                     <td className="py-4 px-4 text-center text-gray-600">{index + 1}</td>
                     <td className="py-4 px-4 font-semibold text-gray-800">#VFZ{p.id.toString().padStart(6, '0')}</td>
                     <td className="py-4 px-4">
-                      <div className="font-semibold text-gray-800">{p.nama_penerima || 'Anonim'}</div>
+                      <div className="font-semibold text-gray-800">{p.nama_penerima || p.pengguna?.nama || 'Anonim'}</div>
                       <div className="text-xs text-gray-500">{p.telepon}</div>
                     </td>
                     <td className="py-4 px-4 text-right font-bold text-gray-800">Rp {(p.total_harga || p.total || 0).toLocaleString('id-ID')}</td>
@@ -122,13 +158,22 @@ export default function KelolaPesanan() {
                     <td className="py-4 px-4 text-center">{getStatusPesananBadge(p.status)}</td>
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        {/* Detail */}
+                        {/* Edit (Sebenarnya Detail & Status) */}
                         <button 
                           onClick={() => { setPesananTerpilih(p); setModalBuka(true); }}
-                          className="inline-flex bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-semibold transition-colors items-center gap-1"
-                          title="Lihat Detail & Bukti Bayar"
+                          className="inline-flex bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold transition-colors items-center gap-1"
+                          title="Edit Status & Lihat Detail"
                         >
-                          <Eye className="w-3.5 h-3.5" /> Detail
+                          <Edit className="w-3.5 h-3.5" /> Edit
+                        </button>
+
+                        {/* Hapus */}
+                        <button 
+                          onClick={() => handleDeletePesanan(p.id)}
+                          className="inline-flex bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-semibold transition-colors items-center gap-1"
+                          title="Hapus Pesanan secara Permanen"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus
                         </button>
 
                         {/* Quick Actions berdasarkan Status */}
@@ -238,7 +283,7 @@ export default function KelolaPesanan() {
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Pelanggan</p>
                 <div className="bg-gray-50 rounded p-3 border border-gray-200/60">
-                  <p className="text-sm font-bold text-gray-800">{pesananTerpilih.nama_penerima}</p>
+                  <p className="text-sm font-bold text-gray-800">{pesananTerpilih.nama_penerima || pesananTerpilih.pengguna?.nama || 'Anonim'}</p>
                   <p className="text-xs text-gray-600 mt-0.5">WhatsApp: {pesananTerpilih.telepon}</p>
                   <p className="text-xs text-gray-600 mt-1.5 leading-relaxed bg-white p-2 rounded border border-gray-100">{pesananTerpilih.alamat_pengiriman}</p>
                 </div>
@@ -266,13 +311,13 @@ export default function KelolaPesanan() {
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Bukti Transfer Bank</p>
                   <div className="bg-gray-50 border border-gray-200 rounded p-2 text-center">
                     <a 
-                      href={`http://localhost:8080/uploads/${pesananTerpilih.bukti_pembayaran}`} 
+                      href={`http://localhost:9000/uploads/${pesananTerpilih.bukti_pembayaran}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="inline-block relative group"
                     >
                       <img 
-                        src={`http://localhost:8080/uploads/${pesananTerpilih.bukti_pembayaran}`} 
+                        src={`http://localhost:9000/uploads/${pesananTerpilih.bukti_pembayaran}`} 
                         alt="Bukti Transfer" 
                         className="max-h-48 rounded border border-gray-200 shadow-sm object-contain mx-auto group-hover:opacity-90 transition-opacity"
                       />

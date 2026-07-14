@@ -90,6 +90,7 @@ func main() {
 		{
 			authGroup.POST("/register", handlers.Registrasi)
 			authGroup.POST("/login", handlers.Login)
+			authGroup.POST("/forgot-password", handlers.LupaPassword)
 		}
 
 		menuGroup := api.Group("/menus")
@@ -109,6 +110,7 @@ func main() {
 		api.POST("/payment/notification", handlers.MidtransNotification)
 
 		// Pesan pelanggan — kirim pesan (bisa tanpa login)
+		api.GET("/pesan-pelanggan", handlers.AmbilSemuaPesanPelanggan)
 		api.POST("/pesan-pelanggan", handlers.KirimPesanPelanggan)
 
 		// --- rute terproteksi (harus login terlebih dahulu) ---
@@ -150,6 +152,7 @@ func main() {
 				// Manajemen pesanan masuk
 				adminGroup.GET("/orders", handlers.AmbilSemuaPesanan)
 				adminGroup.PUT("/orders/:id/status", handlers.PerbaruiStatusPesanan)
+				adminGroup.DELETE("/orders/:id", handlers.HapusPesanan)
 
 				// Manajemen promo
 				adminGroup.GET("/promo/admin", handlers.AmbilSemuaPromoAdmin)
@@ -157,12 +160,14 @@ func main() {
 				adminGroup.PUT("/promo/:id", handlers.EditPromo)
 				adminGroup.DELETE("/promo/:id", handlers.HapusPromo)
 
-				// Data pelanggan
-				adminGroup.GET("/users", handlers.AmbilSemuaPelanggan)
+				// Data pengguna (admin & pelanggan)
+				adminGroup.GET("/users", handlers.AmbilSemuaPengguna)
+				adminGroup.POST("/users", handlers.TambahPengguna)
+				adminGroup.PUT("/users/:id", handlers.EditPengguna)
+				adminGroup.DELETE("/users/:id", handlers.HapusPengguna)
 				adminGroup.GET("/users/:id", handlers.AmbilDetailPelanggan)
 
 				// Pesan Pelanggan (Halaman Kontak)
-				adminGroup.GET("/pesan-pelanggan", handlers.AmbilSemuaPesanPelanggan)
 				adminGroup.PUT("/pesan-pelanggan/:id/balas", handlers.BalasPesanPelanggan)
 				adminGroup.DELETE("/pesan-pelanggan/:id", handlers.HapusPesanPelanggan)
 

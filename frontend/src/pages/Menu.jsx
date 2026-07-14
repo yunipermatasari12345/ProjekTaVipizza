@@ -165,7 +165,7 @@ export default function Menu() {
     }
 
     // STEP 2: Fetch dari API di background, update jika berhasil
-    fetch('http://localhost:8080/api/menus')
+    fetch('http://localhost:9000/api/menus')
       .then(res => {
         if (!res.ok) throw new Error("Gagal load API");
         return res.json();

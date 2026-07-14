@@ -13,6 +13,11 @@ export default function Masuk() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // State untuk Lupa Password
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -39,6 +44,38 @@ export default function Masuk() {
       Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Periksa email dan password Anda.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon isi email Anda!' });
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const response = await fetch('http://localhost:9000/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message });
+        setShowForgotModal(false);
+        setForgotEmail('');
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: data.error || 'Terjadi kesalahan saat reset password.' });
+      }
+    } catch (err) {
+      // Fallback jika backend mati
+      Swal.fire({ icon: 'info', title: 'Simulasi', text: 'Permintaan reset password berhasil (Simulasi Demo).' });
+      setShowForgotModal(false);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -87,6 +124,15 @@ export default function Masuk() {
                 {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
               </button>
             </div>
+            <div className="flex justify-end mt-2">
+              <button 
+                type="button" 
+                onClick={() => setShowForgotModal(true)}
+                className="text-xs text-[#0b5345] hover:underline font-medium"
+              >
+                Lupa Password?
+              </button>
+            </div>
           </div>
 
           <div className="p-3 bg-[#e8f5f2] border border-[#0b5345]/20 text-[#212529] text-[11px] rounded">
@@ -106,6 +152,45 @@ export default function Masuk() {
           <Link to="/daftar" className="text-[#0b5345] font-semibold hover:underline">Register</Link>
         </p>
       </div>
+
+      {/* Modal Lupa Password */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl relative">
+            <h3 className="font-bold text-lg mb-2 text-[#212529]">Lupa Password</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Masukkan email yang terdaftar. Password baru akan dikirimkan ke WhatsApp Anda.
+            </p>
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+              <input
+                type="email"
+                placeholder="budi@vipizza.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="input-bs"
+                required
+              />
+              <div className="flex gap-2 justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
+                >
+                  {forgotLoading ? 'Mengirim...' : 'Kirim Password Baru'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

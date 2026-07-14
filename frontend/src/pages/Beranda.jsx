@@ -53,7 +53,7 @@ export default function Beranda() {
   ];
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/menus')
+    fetch('http://localhost:9000/api/menus')
       .then(r => r.json())
       .then(d => {
         if (Array.isArray(d) && d.length > 0) {
@@ -65,7 +65,7 @@ export default function Beranda() {
       })
       .catch(() => setMenuFavorit(menuDefault));
 
-    fetch('http://localhost:8080/api/promo')
+    fetch('http://localhost:9000/api/promo')
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setPromoAktif(d.slice(0, 1)); })
       .catch(() => {});
