@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 
 export default function Profil() {
   const { user, token, updateUser } = useAuth();
-  const API = 'http://localhost:9000/api';
+  const API = 'https://power-payee-annex.ngrok-free.dev/api';
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
   const [form, setForm] = useState({ nama: user?.nama || '', telepon: user?.telepon || '', alamat: user?.alamat || '' });

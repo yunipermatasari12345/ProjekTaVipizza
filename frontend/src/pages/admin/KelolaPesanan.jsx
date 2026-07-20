@@ -14,7 +14,7 @@ export default function KelolaPesanan() {
 
   const muatPesanan = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/orders', {
+      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/orders', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -37,7 +37,7 @@ export default function KelolaPesanan() {
 
   const handleUpdateStatus = async (id, statusBaru) => {
     try {
-      const res = await fetch(`http://localhost:9000/api/orders/${id}/status`, {
+      const res = await fetch(`https://power-payee-annex.ngrok-free.dev/api/orders/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ export default function KelolaPesanan() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`http://localhost:9000/api/orders/${id}`, {
+          const res = await fetch(`https://power-payee-annex.ngrok-free.dev/api/orders/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });

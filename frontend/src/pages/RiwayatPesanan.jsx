@@ -13,7 +13,7 @@ export default function RiwayatPesanan() {
       setLoading(false);
       return;
     }
-    fetch('http://localhost:9000/api/orders/my', {
+    fetch('https://power-payee-annex.ngrok-free.dev/api/orders/my', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

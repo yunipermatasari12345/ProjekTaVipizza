@@ -33,7 +33,7 @@ export default function Cart() {
   const handleCekPromo = async () => {
     if (!kodePromoInput) return;
     try {
-      const response = await fetch(`http://localhost:9000/api/promo/check?kode=${kodePromoInput}`);
+      const response = await fetch(`https://power-payee-annex.ngrok-free.dev/api/promo/check?kode=${kodePromoInput}`);
       const data = await response.json();
       if (response.ok) {
         setPromoAktif({ kode: data.kode, diskon: data.diskon });
@@ -83,7 +83,7 @@ export default function Cart() {
 
     // Coba kirim ke REST API Backend
     try {
-      const response = await fetch('http://localhost:9000/api/orders', {
+      const response = await fetch('https://power-payee-annex.ngrok-free.dev/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export default function Cart() {
           // Panggil Midtrans Snap
           window.snap.pay(snapTokenStr, {
             onSuccess: function (result) {
-              fetch('http://localhost:9000/api/orders/' + realOrderId + '/verify-payment', {
+              fetch('https://power-payee-annex.ngrok-free.dev/api/orders/' + realOrderId + '/verify-payment', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token }
               }).catch(function(){});

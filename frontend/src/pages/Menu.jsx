@@ -50,7 +50,7 @@ export default function Menu() {
     setLoadingUlasan(true);
 
     // Ambil ulasan dari API
-    fetch(`http://localhost:9000/api/menus/${menu.id}/ulasan`)
+    fetch(`https://power-payee-annex.ngrok-free.dev/api/menus/${menu.id}/ulasan`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -182,7 +182,7 @@ export default function Menu() {
     }
 
     // STEP 2: Fetch dari API di background, update jika berhasil
-    fetch('http://localhost:9000/api/menus')
+    fetch('https://power-payee-annex.ngrok-free.dev/api/menus')
       .then(res => {
         if (!res.ok) throw new Error("Gagal load API");
         return res.json();
@@ -202,7 +202,7 @@ export default function Menu() {
       });
 
     // Fetch rekomendasi
-    fetch('http://localhost:9000/api/menus/rekomendasi')
+    fetch('https://power-payee-annex.ngrok-free.dev/api/menus/rekomendasi')
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {

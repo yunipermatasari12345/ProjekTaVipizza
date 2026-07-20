@@ -27,7 +27,7 @@ export default function DashboardPelanggan() {
   const muatData = () => {
     if (!token) return;
     setLoading(true);
-    fetch('http://localhost:9000/api/dashboard', {
+    fetch('https://power-payee-annex.ngrok-free.dev/api/dashboard', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
