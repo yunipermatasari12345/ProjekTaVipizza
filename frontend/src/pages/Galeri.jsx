@@ -18,7 +18,7 @@ export default function Galeri() {
   const [uploading, setUploading] = useState(false);
 
   const muatGaleri = () => {
-    fetch('https://power-payee-annex.ngrok-free.dev/api/galeri')
+    fetch('https://8a49cf3c307c57.lhr.life/api/galeri')
       .then(res => res.json())
       .then(data => {
         setGaleri(Array.isArray(data) ? data : []);
@@ -48,7 +48,7 @@ export default function Galeri() {
     formData.append('gambar', fileObj);
 
     try {
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/galeri', {
+      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/galeri', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -118,7 +118,7 @@ export default function Galeri() {
                 className="rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 border border-[#E8DDD5] group relative aspect-square cursor-pointer"
               >
                 <img 
-                  src={`https://power-payee-annex.ngrok-free.dev${item.gambar_url}`} 
+                  src={`https://8a49cf3c307c57.lhr.life${item.gambar_url}`} 
                   alt={item.judul}
                   className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                   loading="lazy"
@@ -199,7 +199,7 @@ export default function Galeri() {
           
           <div className="max-w-4xl w-full flex flex-col items-center animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <img 
-              src={`https://power-payee-annex.ngrok-free.dev${selectedImage.gambar_url}`} 
+              src={`https://8a49cf3c307c57.lhr.life${selectedImage.gambar_url}`} 
               alt={selectedImage.judul}
               className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl mb-6"
             />

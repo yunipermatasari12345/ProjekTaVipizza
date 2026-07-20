@@ -19,7 +19,7 @@ export default function DataPelanggan() {
     id: null, nama: '', email: '', telepon: '', alamat: '', password: '', peran: 'pelanggan'
   });
 
-  const API = 'https://power-payee-annex.ngrok-free.dev/api';
+  const API = 'https://8a49cf3c307c57.lhr.life/api';
   const headers = { 'Authorization': `Bearer ${token}` };
 
   const ambilData = async () => {

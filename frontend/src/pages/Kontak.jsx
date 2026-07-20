@@ -31,7 +31,7 @@ export default function Kontak() {
   const muatRiwayat = () => {
     // Coba ambil dari backend dulu
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    fetch('https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan', { headers })
+    fetch('https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan', { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -70,7 +70,7 @@ export default function Kontak() {
 
     // Coba kirim ke backend
     try {
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan', {
+      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ nama, email, pertanyaan, pengguna_id: user?.id || null }),

@@ -18,7 +18,7 @@ export default function PesanPelanggan() {
   const muatPesan = async (isAutoRefresh = false) => {
     if (!isAutoRefresh) setLoading(true);
     try {
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan', { headers });
+      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan', { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -57,7 +57,7 @@ export default function PesanPelanggan() {
     // Coba kirim ke backend
     let berhasil = false;
     try {
-      const res = await fetch(`https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan/${pesanId}/balas`, {
+      const res = await fetch(`https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan/${pesanId}/balas`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ balasan: balasanText }),
@@ -97,7 +97,7 @@ export default function PesanPelanggan() {
       if (!result.isConfirmed) return;
 
       try {
-        await fetch(`https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan/${id}`, { method: 'DELETE', headers });
+        await fetch(`https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan/${id}`, { method: 'DELETE', headers });
       } catch { /* ignore */ }
 
       const lokal = JSON.parse(localStorage.getItem('vipizza_pesan_kontak') || '[]');

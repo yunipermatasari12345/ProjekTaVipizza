@@ -20,7 +20,7 @@ export default function KelolaGaleri() {
 
   const muatGaleri = async () => {
     try {
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/galeri');
+      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/galeri');
       const data = await res.json();
       setGaleri(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -42,7 +42,7 @@ export default function KelolaGaleri() {
     formData.append('gambar', fileObj);
 
     try {
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/galeri', {
+      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/galeri', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -77,7 +77,7 @@ export default function KelolaGaleri() {
 
     if (confirm.isConfirmed) {
       try {
-        const res = await fetch(`https://power-payee-annex.ngrok-free.dev/api/galeri/${id}`, {
+        const res = await fetch(`https://8a49cf3c307c57.lhr.life/api/galeri/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -168,7 +168,7 @@ export default function KelolaGaleri() {
                 {galeri.map(item => (
                   <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-square bg-gray-50">
                     <img 
-                      src={`https://power-payee-annex.ngrok-free.dev${item.gambar_url}`} 
+                      src={`https://8a49cf3c307c57.lhr.life${item.gambar_url}`} 
                       alt={item.judul}
                       className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
                     />
