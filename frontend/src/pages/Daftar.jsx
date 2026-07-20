@@ -41,9 +41,9 @@ export default function Register() {
       setLoading(false);
       Swal.fire({ icon: 'success', title: 'Registrasi Berhasil', text: 'Selamat datang di Vipizza!', timer: 2000, showConfirmButton: false });
       navigate('/dashboard');
-    } catch {
+    } catch (err) {
       setLoading(false);
-      Swal.fire({ icon: 'error', title: 'Registrasi Gagal', text: 'Terjadi kesalahan. Pastikan password minimal 6 karakter.' });
+      Swal.fire({ icon: 'error', title: 'Registrasi Gagal', text: err.message || 'Terjadi kesalahan.' });
     }
   };
 

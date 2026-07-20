@@ -124,12 +124,14 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ nama, email, password, telepon, alamat })
       });
 
-      if (response.ok) {
-        return loginSimulasi(email, password);
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Gagal mendaftar');
       }
-      return null;
+      return loginSimulasi(email, password);
     } catch (err) {
-      console.warn("Backend offline, fallback ke mock register:", err.message);
+      console.warn("Backend error / offline:", err.message);
+      throw err; // Lempar error ke UI
     }
 
     const mockUser = {
