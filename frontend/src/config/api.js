@@ -18,6 +18,9 @@ export async function apiFetch(endpoint, options = {}, token = null) {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json';
   }
 
+  // Bypass halaman peringatan keamanan Ngrok gratis
+  headers['ngrok-skip-browser-warning'] = '69420';
+
   if (token && token !== 'mock_jwt_token_vipizza') {
     headers['Authorization'] = `Bearer ${token}`;
   }
