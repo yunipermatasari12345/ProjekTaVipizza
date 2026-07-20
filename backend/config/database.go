@@ -21,11 +21,11 @@ func HubungkanDatabase() {
 	dbHost := ambilEnvDefault("DB_HOST", "127.0.0.1")
 	dbPort := ambilEnvDefault("DB_PORT", "3306")
 	dbName := ambilEnvDefault("DB_NAME", "vipizza")
+	dbSSL := ambilEnvDefault("DB_SSL_MODE", "false") // Set "true" untuk Aiven/Cloud
 
 	// Langkah 1: Hubungkan ke MySQL server TANPA menentukan nama database terlebih dahulu
-	// untuk memastikan databasenya sudah ada, jika belum maka buat otomatis!
-	dsnTanpaDB := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPass, dbHost, dbPort)
+	dsnTanpaDB := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
+		dbUser, dbPass, dbHost, dbPort, dbSSL)
 	
 	dbServer, err := sql.Open("mysql", dsnTanpaDB)
 	if err != nil {
@@ -41,8 +41,8 @@ func HubungkanDatabase() {
 	}
 
 	// Langkah 2: Hubungkan secara penuh ke database yang telah dibuat
-	dsnLengkap := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPass, dbHost, dbPort, dbName)
+	dsnLengkap := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=%s",
+		dbUser, dbPass, dbHost, dbPort, dbName, dbSSL)
 
 	DB, err = gorm.Open(mysql.Open(dsnLengkap), &gorm.Config{})
 	if err != nil {
