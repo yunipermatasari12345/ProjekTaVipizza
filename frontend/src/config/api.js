@@ -4,8 +4,8 @@
 // URL dasar backend Go. Ubah jika backend di port/host berbeda.
 // ============================================================
 
-export const API_BASE_URL = 'https://8a49cf3c307c57.lhr.life/api';
-export const UPLOAD_BASE_URL = 'https://8a49cf3c307c57.lhr.life';
+export const API_BASE_URL = 'https://power-payee-annex.ngrok-free.dev/api';
+export const UPLOAD_BASE_URL = 'https://power-payee-annex.ngrok-free.dev';
 
 // Helper fetch dengan token JWT otomatis
 export async function apiFetch(endpoint, options = {}, token = null) {

@@ -56,7 +56,7 @@ export default function Masuk() {
 
     setForgotLoading(true);
     try {
-      const response = await fetch('https://8a49cf3c307c57.lhr.life/api/auth/forgot-password', {
+      const response = await fetch('https://power-payee-annex.ngrok-free.dev/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })

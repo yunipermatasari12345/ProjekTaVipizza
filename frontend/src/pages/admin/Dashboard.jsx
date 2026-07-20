@@ -17,7 +17,7 @@ const STATUS_CONFIG = {
 
 export default function Dashboard() {
   const { token } = useAuth();
-  const API = 'https://8a49cf3c307c57.lhr.life/api';
+  const API = 'https://power-payee-annex.ngrok-free.dev/api';
   const headers = { 'Authorization': `Bearer ${token}` };
 
   const [summary, setSummary] = useState(null);
@@ -229,7 +229,7 @@ export default function Dashboard() {
             {detail.bukti_pembayaran && (
               <div className="mb-4">
                 <p className="text-xs font-bold text-gray-600 mb-1">Bukti Pembayaran</p>
-                <img src={detail.bukti_pembayaran.startsWith('http') ? detail.bukti_pembayaran : `https://8a49cf3c307c57.lhr.life${detail.bukti_pembayaran}`} alt="Bukti" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
+                <img src={detail.bukti_pembayaran.startsWith('http') ? detail.bukti_pembayaran : `https://power-payee-annex.ngrok-free.dev${detail.bukti_pembayaran}`} alt="Bukti" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
               </div>
             )}
 

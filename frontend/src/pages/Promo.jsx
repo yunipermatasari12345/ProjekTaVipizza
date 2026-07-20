@@ -8,7 +8,7 @@ export default function Promo() {
   const [kopiId, setKopiId] = useState(null);
 
   useEffect(() => {
-    fetch('https://8a49cf3c307c57.lhr.life/api/promo')
+    fetch('https://power-payee-annex.ngrok-free.dev/api/promo')
       .then(res => { if (!res.ok) throw new Error(); return res.json(); })
       .then(data => { if (Array.isArray(data)) setPromos(data); })
       .catch(() => {})
@@ -71,7 +71,7 @@ export default function Promo() {
                     <div className="h-56 bg-gradient-to-br from-[#0b5345] to-[#1a7a61] relative overflow-hidden">
                       {promo.banner_url ? (
                         <img
-                          src={`https://8a49cf3c307c57.lhr.life${promo.banner_url}`}
+                          src={`https://power-payee-annex.ngrok-free.dev${promo.banner_url}`}
                           alt={promo.judul}
                           className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-300"
                         />

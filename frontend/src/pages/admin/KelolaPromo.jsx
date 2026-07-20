@@ -21,7 +21,7 @@ export default function KelolaPromo() {
 
   const muatPromo = async () => {
     try {
-      const res = await fetch('https://8a49cf3c307c57.lhr.life/api/promo/admin', {
+      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/promo/admin', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -52,7 +52,7 @@ export default function KelolaPromo() {
   const handleBukaEdit = (p) => {
     setPromoTerpilih(p);
     setSelectedFile(null);
-    setPreviewUrl(p.banner_url ? `https://8a49cf3c307c57.lhr.life${p.banner_url}` : null);
+    setPreviewUrl(p.banner_url ? `https://power-payee-annex.ngrok-free.dev${p.banner_url}` : null);
     setFormData({
       judul: p.judul, deskripsi: p.deskripsi, kode_promo: p.kode_promo,
       diskon: p.diskon.toString(),
@@ -88,7 +88,7 @@ export default function KelolaPromo() {
     fd.append('aktif', formData.aktif ? 'true' : 'false');
     if (selectedFile) fd.append('banner', selectedFile);
 
-    const apiURL = promoTerpilih ? `https://8a49cf3c307c57.lhr.life/api/promo/${promoTerpilih.id}` : 'https://8a49cf3c307c57.lhr.life/api/promo';
+    const apiURL = promoTerpilih ? `https://power-payee-annex.ngrok-free.dev/api/promo/${promoTerpilih.id}` : 'https://power-payee-annex.ngrok-free.dev/api/promo';
     const apiMethod = promoTerpilih ? 'PUT' : 'POST';
 
     try {
@@ -119,7 +119,7 @@ export default function KelolaPromo() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`https://8a49cf3c307c57.lhr.life/api/promo/${id}`, {
+          const res = await fetch(`https://power-payee-annex.ngrok-free.dev/api/promo/${id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -295,7 +295,7 @@ export default function KelolaPromo() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           {p.banner_url ? (
-                            <img src={`https://8a49cf3c307c57.lhr.life${p.banner_url}`} alt={p.judul} className="w-16 h-10 object-cover rounded border border-gray-200 mx-auto" />
+                            <img src={`https://power-payee-annex.ngrok-free.dev${p.banner_url}`} alt={p.judul} className="w-16 h-10 object-cover rounded border border-gray-200 mx-auto" />
                           ) : (
                             <span className="text-gray-400 text-xs">-</span>
                           )}

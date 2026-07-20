@@ -52,8 +52,8 @@ export default function AdminLayout() {
     const cekNotifikasi = async () => {
       try {
         const [ordRes, pesanRes] = await Promise.all([
-          fetch('https://8a49cf3c307c57.lhr.life/api/orders', { headers }),
-          fetch('https://8a49cf3c307c57.lhr.life/api/pesan-pelanggan', { headers }),
+          fetch('https://power-payee-annex.ngrok-free.dev/api/orders', { headers }),
+          fetch('https://power-payee-annex.ngrok-free.dev/api/pesan-pelanggan', { headers }),
         ]);
         if (ordRes.ok) {
           const orders = await ordRes.json();

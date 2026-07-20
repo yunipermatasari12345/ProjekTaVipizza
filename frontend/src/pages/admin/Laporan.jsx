@@ -23,7 +23,7 @@ export default function Reports() {
         tanggal_akhir: tanggalAkhir,
       });
 
-      const response = await fetch(`https://8a49cf3c307c57.lhr.life/api/reports/sales?${params.toString()}`, {
+      const response = await fetch(`https://power-payee-annex.ngrok-free.dev/api/reports/sales?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -60,7 +60,7 @@ export default function Reports() {
         tanggal_akhir: tanggalAkhir,
       });
 
-      const response = await fetch(`https://8a49cf3c307c57.lhr.life/api/reports/pdf?${params.toString()}`, {
+      const response = await fetch(`https://power-payee-annex.ngrok-free.dev/api/reports/pdf?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -11,7 +11,7 @@ export default function KelolaKategori() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ nama: '', deskripsi: '', aktif: true });
 
-  const API = 'https://8a49cf3c307c57.lhr.life/api';
+  const API = 'https://power-payee-annex.ngrok-free.dev/api';
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
