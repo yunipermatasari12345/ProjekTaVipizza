@@ -31,6 +31,19 @@ func AmbilSemuaMenu(c *gin.Context) {
 	c.JSON(http.StatusOK, menus)
 }
 
+// AmbilRekomendasiMenu mengambil daftar menu yang paling banyak terjual
+func AmbilRekomendasiMenu(c *gin.Context) {
+	var menus []models.Menu
+
+	// Ambil top 8 menu berdasarkan jumlah terjual paling banyak
+	if err := config.DB.Order("terjual DESC").Limit(8).Find(&menus).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil rekomendasi menu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, menus)
+}
+
 // AmbilDetailMenu mengambil detail menu berdasarkan ID
 func AmbilDetailMenu(c *gin.Context) {
 	id := c.Param("id")

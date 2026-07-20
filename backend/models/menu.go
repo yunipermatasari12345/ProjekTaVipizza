@@ -18,6 +18,9 @@ type Menu struct {
 	Tersedia     bool      `gorm:"type:boolean;default:true" json:"tersedia"`
 	IsFavorit    bool      `gorm:"type:boolean;default:false" json:"is_favorit"`    // Ditampilkan di seksi Menu Favorit
 	IsBestSeller bool      `gorm:"type:boolean;default:false" json:"is_best_seller"` // Ditampilkan di seksi Best Seller
+	Terjual      int       `gorm:"type:int;default:0" json:"terjual"`                // Untuk rekomendasi (banyak dipesan)
+	Rating       float64   `gorm:"type:decimal(3,2);default:0" json:"rating"`        // Rata-rata rating makanan
+	JumlahUlasan int       `gorm:"type:int;default:0" json:"jumlah_ulasan"`          // Jumlah ulasan/rating yang diberikan
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

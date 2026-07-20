@@ -23,7 +23,7 @@ export default function Reports() {
         tanggal_akhir: tanggalAkhir,
       });
 
-      const response = await fetch(`http://localhost:9000/api/reports/json?${params.toString()}`, {
+      const response = await fetch(`http://localhost:9000/api/reports/sales?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -86,25 +86,32 @@ export default function DashboardPelanggan() {
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#F3E6DC] opacity-60 blur-xl" />
         <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-[#EFE3D8] opacity-50 blur-xl" />
 
-        <div className="relative max-w-5xl mx-auto px-6 py-10 md:py-12">
-          <div className="flex items-center justify-between flex-wrap gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[#8B3A0F] text-xs font-black tracking-widest uppercase">{sapaan} 👋</span>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-black text-[#2C1810] leading-tight">
-                Halo, <span className="text-[#8B3A0F]">{namaDepan}!</span>
-              </h1>
-              <p className="text-[#5C3D2E] text-sm mt-1.5 font-medium">Yuk pesan pizza favoritmu hari ini 🍕</p>
+        <div className="relative max-w-5xl mx-auto px-6 py-10 md:py-14">
+          <div className="flex flex-col items-start w-full">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[#8B3A0F] text-xs font-black tracking-widest uppercase">{sapaan} 👋</span>
             </div>
-            <div className="flex items-center gap-3">
+            
+            {/* Teks Besar Menyamping Sesuai Referensi Gambar */}
+            <div className="flex items-center gap-2 md:gap-3 mb-6 flex-wrap">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B3A0F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 -mt-1.5">
+                <path d="M12 2v8M6 4l4 6M18 4l-4 6"/>
+              </svg>
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-[#2C1810] tracking-tighter uppercase leading-none flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>HALO, <span className="text-[#8B3A0F]">{namaDepan}!</span></span>
+                <span className="hidden md:inline-block text-[#E8DDD5]">·</span>
+                <span>YUK PESAN PIZZA FAVORITMU</span>
+              </h1>
+            </div>
+            
+            <div className="flex items-center gap-4">
               <Link to="/menu"
-                className="flex items-center gap-2 bg-black hover:bg-gray-900 text-white font-extrabold text-sm px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all">
-                <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" /> Pesan Sekarang
+                className="flex items-center gap-2 bg-black hover:bg-gray-900 text-white font-extrabold text-sm md:text-base px-8 py-3.5 md:py-4 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all uppercase tracking-wider">
+                <Flame className="w-5 h-5 text-amber-400 fill-amber-400 animate-pulse" /> Pesan Sekarang
               </Link>
               <button onClick={muatData}
-                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-[#2C1810] text-xs px-4 py-3 rounded-full transition-all font-bold cursor-pointer border border-[#E8DDD5] shadow-sm">
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                className="flex items-center gap-2 bg-white hover:bg-gray-50 text-[#2C1810] text-sm md:text-base px-6 py-3.5 md:py-4 rounded-full transition-all font-bold cursor-pointer border border-[#E8DDD5] shadow-sm hover:-translate-y-0.5 uppercase tracking-wider">
+                <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
@@ -138,7 +145,7 @@ export default function DashboardPelanggan() {
           </div>
         ) : (
           <>
-            {/* ===== PROMO BANNER KOTAK KE SAMPING ===== */}
+            {/* ===== PROMO BANNER KOTAK GRID ===== */}
             {promoList.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
@@ -149,28 +156,30 @@ export default function DashboardPelanggan() {
                     Promo Spesial ✨
                   </h3>
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {promoList.map(p => (
                     <div key={p.id}
-                      className="shrink-0 w-64 bg-white rounded-2xl shadow-sm border border-[#E8DDD5] p-4 flex flex-col justify-between hover:shadow-md transition-all">
+                      className="bg-white rounded-2xl shadow-sm border border-[#E8DDD5] p-4 flex flex-col justify-between hover:shadow-md transition-all h-full">
                       <div>
-                        <div className="flex items-center gap-1.5 mb-1.5">
+                        <div className="flex items-center gap-1.5 mb-2">
                           <span className="text-[10px] font-black bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                             Diskon {p.diskon}%
                           </span>
                         </div>
-                        <h4 className="text-xs font-black text-slate-800 leading-snug truncate">{p.judul}</h4>
-                        <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed h-7">{p.deskripsi}</p>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug mb-1 line-clamp-1">{p.judul}</h4>
+                        <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed flex-1">{p.deskripsi}</p>
                       </div>
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                         {p.kode_promo ? (
-                          <div className="bg-[#FAF6F1] border border-[#E8DDD5] px-2.5 py-1 rounded-lg">
-                            <span className="text-[9px] font-extrabold text-[#8B3A0F] tracking-wider">KODE: {p.kode_promo}</span>
+                          <div className="bg-[#FAF6F1] border border-[#E8DDD5] px-2.5 py-1.5 rounded-lg overflow-hidden flex-1 max-w-[70%]">
+                            <span className="text-[9px] font-extrabold text-[#8B3A0F] tracking-wider truncate block">
+                              KODE: {p.kode_promo}
+                            </span>
                           </div>
                         ) : (
                           <span className="text-[9px] font-bold text-slate-400">Tanpa Kode</span>
                         )}
-                        <Link to="/menu" className="text-[10px] font-black text-orange-500 hover:text-orange-600 flex items-center gap-0.5">
+                        <Link to="/menu" className="text-[10px] font-black text-orange-500 hover:text-orange-600 flex items-center gap-0.5 shrink-0">
                           Pakai <ChevronRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -182,35 +191,24 @@ export default function DashboardPelanggan() {
 
 
 
-            {/* ===== PESANAN TERBARU ===== */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-              <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-                    <Clock className="w-4 h-4 text-white" />
+            {/* ===== PESANAN TERBARU (Hanya tampil jika ada) ===== */}
+            {pesananAktif.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-sm">Pesanan Aktif</h3>
+                      <p className="text-[10px] text-slate-400">{pesananAktif.length} pesanan berjalan</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm">Pesanan Aktif</h3>
-                    <p className="text-[10px] text-slate-400">{pesananAktif.length} pesanan berjalan</p>
-                  </div>
-                </div>
-                <Link to="/riwayat" className="text-xs font-bold text-orange-500 hover:text-orange-600 flex items-center gap-1">
-                  Lihat Riwayat <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-
-              {pesananAktif.length === 0 ? (
-                <div className="py-14 flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center">
-                    <ShoppingBag className="w-8 h-8 text-slate-200" />
-                  </div>
-                  <p className="text-sm font-semibold text-slate-400">Belum ada pesanan aktif</p>
-                  <Link to="/menu"
-                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-2 rounded-full shadow-md hover:shadow-lg transition-all">
-                    <Flame className="w-3.5 h-3.5" /> Pesan Pizza Sekarang!
+                  <Link to="/riwayat" className="text-xs font-bold text-orange-500 hover:text-orange-600 flex items-center gap-1">
+                    Lihat Riwayat <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
-              ) : (
+
                 <div className="divide-y divide-slate-50">
                   {pesananAktif.map(p => {
                     const cfg = STATUS_CONFIG[p.status] || {};
@@ -248,8 +246,8 @@ export default function DashboardPelanggan() {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* ===== RIWAYAT SELESAI ===== */}
             {pesananSelesai.length > 0 && (

@@ -56,6 +56,7 @@ export default function CustomerNavbar() {
           <Link to="/menu" className={linkClass('/menu')}>Menu</Link>
           <Link to="/promo" className={linkClass('/promo')}>Promo</Link>
           <Link to="/tentang" className={linkClass('/tentang')}>Tentang</Link>
+          <Link to="/galeri" className={linkClass('/galeri')}>Galeri</Link>
           <Link to="/kontak" className={linkClass('/kontak')}>Kontak</Link>
         </nav>
 
@@ -104,6 +105,7 @@ export default function CustomerNavbar() {
             { to: '/menu', label: 'Menu' },
             { to: '/promo', label: 'Promo' },
             { to: '/tentang', label: 'Tentang' },
+            { to: '/galeri', label: 'Galeri' },
             { to: '/kontak', label: 'Kontak' },
             { to: '/keranjang', label: 'Keranjang 🛒' },
           ].map(({ to, label }) => (

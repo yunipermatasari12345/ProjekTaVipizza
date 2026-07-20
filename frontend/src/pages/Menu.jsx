@@ -20,6 +20,10 @@ export default function Menu() {
   const [ukuranTerpilih, setUkuranTerpilih] = useState('Medium'); // 'Medium' atau 'Large'
   const [jumlah, setJumlah] = useState(1);
   const [catatan, setCatatan] = useState('');
+  
+  // State Ulasan per produk di Detail
+  const [ulasanMenuDetail, setUlasanMenuDetail] = useState([]);
+  const [loadingUlasan, setLoadingUlasan] = useState(false);
 
   // Sync kategoriAktif with URL search param
   useEffect(() => {
@@ -41,7 +45,19 @@ export default function Menu() {
     setUkuranTerpilih('Medium');
     setJumlah(1);
     setCatatan('');
+    setUlasanMenuDetail([]);
     setModalDetailBuka(true);
+    setLoadingUlasan(true);
+
+    // Ambil ulasan dari API
+    fetch(`http://localhost:9000/api/menus/${menu.id}/ulasan`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUlasanMenuDetail(data);
+        }
+      })
+      .finally(() => setLoadingUlasan(false));
   };
 
   const handleTambahDetailKeKeranjang = (langsungCheckout = false) => {
@@ -80,6 +96,7 @@ export default function Menu() {
   };
 
   const [semuaMenu, setSemuaMenu] = useState([]);
+  const [menusRekomendasi, setMenusRekomendasi] = useState([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
 
   useEffect(() => {
@@ -184,6 +201,17 @@ export default function Menu() {
         muat_default();
       });
 
+    // Fetch rekomendasi
+    fetch('http://localhost:9000/api/menus/rekomendasi')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          setMenusRekomendasi(data.slice(0, 4));
+        }
+      })
+      .catch(() => {});
+
+
     function muat_default() {
       // Hanya pakai default jika belum ada data tampil
       setSemuaMenu(prev => {
@@ -231,6 +259,82 @@ export default function Menu() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c757d]" />
           </div>
 
+          {/* Bagian Rekomendasi Menu */}
+          {!loadingMenu && pencarian === '' && menusRekomendasi.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                Rekomendasi (Paling Banyak Dipesan)
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {menusRekomendasi.map((menu) => {
+                  const habis = menu.stok === 0;
+                  return (
+                    <div
+                      key={`rek-${menu.id}`}
+                      className={`card-bs overflow-hidden flex flex-col relative ${habis ? 'opacity-60' : ''}`}
+                    >
+                      {habis && (
+                        <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded z-10">
+                          Habis
+                        </span>
+                      )}
+                      <div className="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded z-10 flex items-center gap-1 shadow-sm">
+                        <Star className="w-3 h-3 fill-white" /> Rekomendasi
+                      </div>
+                      <div
+                        className="h-48 overflow-hidden cursor-pointer"
+                        onClick={() => { if (!habis) handleBukaDetail(menu); }}
+                      >
+                        <img
+                          src={getImageUrl(menu.gambar_url) || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300'}
+                          alt={menu.nama}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <h3 className="font-bold text-[#212529] text-sm mb-1">{menu.nama}</h3>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span className="text-xs font-bold text-slate-700">
+                              {menu.rating > 0 ? Number(menu.rating).toFixed(1) : "0.0"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">({menu.jumlah_ulasan || 0})</span>
+                          </div>
+                          <span className="text-[10px] text-brand-orange font-bold bg-pink-50 px-2 py-0.5 rounded-full">
+                            Terjual {menu.terjual || 0}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1 mb-3 mt-auto">
+                          <span className="font-bold text-[#0b5345] text-xs">
+                            Medium: Rp {(menu.harga_medium || menu.harga).toLocaleString('id-ID')}
+                          </span>
+                          <span className="font-bold text-[#8B3A0F] text-xs">
+                            Large: Rp {(menu.harga_large || (menu.harga_medium || menu.harga) + 15000).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        <button
+                          disabled={habis}
+                          onClick={() => { if (!habis) handleBukaDetail(menu); }}
+                          className={`w-full text-xs py-2 flex items-center justify-center gap-1.5 ${
+                            habis ? 'bg-[#e9ecef] text-[#6c757d] cursor-not-allowed rounded' : 'btn-primary'
+                          }`}
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" /> Lihat
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Daftar Semua Menu */}
+          <h2 className="text-xl font-bold text-slate-800 mb-6">Semua Menu Pizza</h2>
+
+
       {loadingMenu && semuaMenu.length === 0 ? (
         /* === SKELETON LOADING CARDS === */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -276,23 +380,28 @@ export default function Menu() {
                 <div className="p-4 flex flex-col flex-1">
                   <h3 className="font-bold text-[#212529] text-base mb-1">{menu.nama}</h3>
                   
-                  {/* Rating Visual Dinamis (berdasarkan ID agar konsisten) */}
+                  {/* Rating Visual Dinamis */}
                   <div className="flex items-center gap-1 mb-2">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span className="text-xs font-bold text-slate-700">
-                      {(4.5 + (menu.id % 6) * 0.1).toFixed(1)}
+                      {menu.rating > 0 ? Number(menu.rating).toFixed(1) : "0.0"}
                     </span>
                     <span className="text-xs text-slate-400">
-                      ({120 + (menu.id * 17) % 300})
+                      ({menu.jumlah_ulasan || 0})
                     </span>
                   </div>
 
                   <p className="text-[#6c757d] text-xs leading-relaxed line-clamp-2 mb-2 flex-1">
                     {menu.deskripsi}
                   </p>
-                  <p className="font-bold text-[#0b5345] text-lg mb-1">
-                    Rp {menu.harga.toLocaleString('id-ID')}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3 mb-1 mt-auto">
+                    <span className="font-bold text-[#0b5345] text-[15px]">
+                      M: Rp {(menu.harga_medium || menu.harga).toLocaleString('id-ID')}
+                    </span>
+                    <span className="font-bold text-[#8B3A0F] text-[15px]">
+                      L: Rp {(menu.harga_large || (menu.harga_medium || menu.harga) + 15000).toLocaleString('id-ID')}
+                    </span>
+                  </div>
                   {!habis && (
                     <p className="text-[10px] text-emerald-600 font-medium mb-3">
                       Stok: {menu.stok} porsi
@@ -327,15 +436,15 @@ export default function Menu() {
         </div>
       </div>
 
-      {/* ==================== MODAL DETAIL & CUSTOMIZATION PIZZA ==================== */}
+      {/* ==================== MODAL DETAIL & CUSTOMIZATION PIZZA (WIDE) ==================== */}
       {modalDetailBuka && menuDetail && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto text-left">
-          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto flex flex-col">
+          <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto flex flex-col max-h-[90vh]">
             
             {/* Header Modal */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100 shrink-0">
               <h3 className="font-serif font-extrabold text-slate-800 text-lg md:text-xl">
-                Kustomisasi Pesanan
+                Detail Menu & Ulasan
               </h3>
               <button 
                 className="p-1.5 hover:bg-slate-100 rounded-full cursor-pointer transition-colors"
@@ -345,120 +454,166 @@ export default function Menu() {
               </button>
             </div>
 
-            {/* Content Modal */}
-            <div className="p-6 overflow-y-auto max-h-[70vh] flex flex-col gap-5">
-              
-              {/* Info Pizza Row */}
-              <div className="flex gap-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shrink-0">
-                  <img 
-                    src={getImageUrl(menuDetail.gambar_url) || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300"} 
-                    alt={menuDetail.nama} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300";
-                    }}
-                  />
-                </div>
-                <div className="flex flex-col justify-center text-left">
-                  <h4 className="font-bold text-slate-800 text-base md:text-lg leading-tight">{menuDetail.nama}</h4>
-                  <p className="text-slate-400 text-xs mt-1 leading-relaxed line-clamp-2">{menuDetail.deskripsi}</p>
-                </div>
-              </div>
+            {/* Content Modal Grid 2 Kolom */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+                
+                {/* KOLOM KIRI: GAMBAR BESAR & ULASAN */}
+                <div className="flex flex-col gap-6">
+                  {/* Gambar Besar */}
+                  <div className="w-full h-64 md:h-80 rounded-2xl overflow-hidden shadow-sm bg-white border border-slate-100 shrink-0">
+                    <img 
+                      src={getImageUrl(menuDetail.gambar_url) || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=600"} 
+                      alt={menuDetail.nama} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Bagian Ulasan */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col flex-1 min-h-[300px]">
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                      <div className="bg-brand-orange-light text-brand-orange text-2xl font-black p-3 rounded-xl leading-none flex items-center gap-1.5">
+                        {menuDetail.rating > 0 ? Number(menuDetail.rating).toFixed(1) : "0.0"} <Star className="w-5 h-5 fill-current" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">Rating & Ulasan</h4>
+                        <p className="text-slate-500 text-xs">Berdasarkan {menuDetail.jumlah_ulasan || 0} penilaian pelanggan</p>
+                      </div>
+                    </div>
 
-              {/* Pilihan Ukuran (Jika bukan pizza 1/2 meter) */}
-              {!menuDetail.nama.includes("1/2 Meter") ? (
-                <div className="flex flex-col gap-2.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Pilih Ukuran Pizza</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    
-                    {/* Ukuran Medium */}
-                    <button
-                      type="button"
-                      className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
-                        ukuranTerpilih === 'Medium'
-                          ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                      onClick={() => setUkuranTerpilih('Medium')}
-                    >
-                      <span className="font-extrabold text-slate-800 text-sm">Ukuran Medium 🍕</span>
-                      <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 1-2 Orang</span>
-                      <span className="font-bold text-brand-orange text-xs mt-1">
-                        Rp {hitungHargaUkuran(menuDetail, 'Medium').toLocaleString('id-ID')}
-                      </span>
-                    </button>
-
-                    {/* Ukuran Large */}
-                    <button
-                      type="button"
-                      className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
-                        ukuranTerpilih === 'Large'
-                          ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                      onClick={() => setUkuranTerpilih('Large')}
-                    >
-                      <span className="font-extrabold text-slate-800 text-sm">Ukuran Large 🍕🔥</span>
-                      <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 3-4 Orang</span>
-                      <span className="font-bold text-brand-orange text-xs mt-1">
-                        Rp {hitungHargaUkuran(menuDetail, 'Large').toLocaleString('id-ID')}
-                      </span>
-                    </button>
-
+                    <div className="flex flex-col gap-4 overflow-y-auto pr-2 max-h-[300px] scrollbar-thin scrollbar-thumb-slate-200">
+                      {loadingUlasan ? (
+                        <p className="text-xs text-slate-400 text-center py-6">Memuat ulasan...</p>
+                      ) : ulasanMenuDetail.length > 0 ? (
+                        ulasanMenuDetail.map(ul => (
+                          <div key={ul.id} className="border border-slate-100 rounded-xl p-3 bg-slate-50 flex flex-col gap-2">
+                            <div className="flex justify-between items-start">
+                              <span className="font-bold text-slate-700 text-xs">{ul.nama_publik || (ul.pengguna ? ul.pengguna.nama : 'Pelanggan')}</span>
+                              <div className="flex text-amber-400">
+                                {[...Array(ul.rating)].map((_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 italic">"{ul.komentar || 'Mantap!'}"</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <span className="text-3xl opacity-50 block mb-2">🤔</span>
+                          <p className="text-xs text-slate-400">Belum ada ulasan untuk produk ini.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200/50 p-4 rounded-2xl">
-                  <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ukuran Spesial Raksasa</span>
-                  <span className="block font-bold text-slate-800 text-sm mt-0.5">Pizza Raksasa Panjang 1/2 Meter</span>
-                  <span className="block font-extrabold text-brand-orange text-base mt-1">Rp 130.000</span>
-                </div>
-              )}
 
-              {/* Kuantitas (Jumlah Porsi) */}
-              <div className="flex items-center justify-between border-t border-b border-slate-100 py-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Jumlah Pembelian</label>
-                  <span className="text-slate-400 text-[10px] font-semibold">Atur kuantitas porsi pizza Anda</span>
+                {/* KOLOM KANAN: PEMBELIAN & CUSTOMIZATION */}
+                <div className="flex flex-col gap-6">
+                  {/* Judul & Deskripsi */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                    <h4 className="font-serif font-extrabold text-slate-800 text-2xl leading-tight mb-2">{menuDetail.nama}</h4>
+                    <p className="text-slate-500 text-sm leading-relaxed">{menuDetail.deskripsi}</p>
+                    <p className="font-black text-brand-orange text-xl mt-4">
+                      Rp {menuDetail.harga.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+
+                  {/* Bagian Kustomisasi Form (Ukuran, Jumlah, Catatan) */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5">
+                    {/* Pilihan Ukuran (Jika bukan pizza 1/2 meter) */}
+                    {!menuDetail.nama.includes("1/2 Meter") ? (
+                      <div className="flex flex-col gap-2.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Pilih Ukuran Pizza</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          
+                          {/* Ukuran Medium */}
+                          <button
+                            type="button"
+                            className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
+                              ukuranTerpilih === 'Medium'
+                                ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                            onClick={() => setUkuranTerpilih('Medium')}
+                          >
+                            <span className="font-extrabold text-slate-800 text-sm">Ukuran Medium 🍕</span>
+                            <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 1-2 Orang</span>
+                            <span className="font-bold text-brand-orange text-xs mt-1">
+                              Rp {hitungHargaUkuran(menuDetail, 'Medium').toLocaleString('id-ID')}
+                            </span>
+                          </button>
+
+                          {/* Ukuran Large */}
+                          <button
+                            type="button"
+                            className={`border p-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all cursor-pointer text-center ${
+                              ukuranTerpilih === 'Large'
+                                ? 'border-brand-orange bg-pink-50/40 shadow-sm ring-2 ring-brand-orange/10'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                            onClick={() => setUkuranTerpilih('Large')}
+                          >
+                            <span className="font-extrabold text-slate-800 text-sm">Ukuran Large 🍕🔥</span>
+                            <span className="text-slate-400 text-[10px] font-semibold">Cocok untuk 3-4 Orang</span>
+                            <span className="font-bold text-brand-orange text-xs mt-1">
+                              Rp {hitungHargaUkuran(menuDetail, 'Large').toLocaleString('id-ID')}
+                            </span>
+                          </button>
+
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200/50 p-4 rounded-2xl">
+                        <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ukuran Spesial Raksasa</span>
+                        <span className="block font-bold text-slate-800 text-sm mt-0.5">Pizza Raksasa Panjang 1/2 Meter</span>
+                        <span className="block font-extrabold text-brand-orange text-base mt-1">Rp 130.000</span>
+                      </div>
+                    )}
+
+                    {/* Kuantitas (Jumlah Porsi) */}
+                    <div className="flex items-center justify-between border-t border-b border-slate-100 py-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Jumlah Pembelian</label>
+                        <span className="text-slate-400 text-[10px] font-semibold">Atur kuantitas porsi pizza Anda</span>
+                      </div>
+                      <div className="flex items-center gap-3.5 border border-slate-200 rounded-full p-1.5 bg-slate-50 shadow-inner">
+                        <button
+                          type="button"
+                          disabled={jumlah <= 1}
+                          className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          onClick={() => setJumlah(jumlah - 1)}
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="font-extrabold text-slate-800 text-sm w-5 text-center">{jumlah}</span>
+                        <button
+                          type="button"
+                          disabled={jumlah >= menuDetail.stok}
+                          className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          onClick={() => setJumlah(jumlah + 1)}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Catatan Pemesanan (Bawang, Pedas, Keju dll) */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Catatan Pemesanan (Opsional)</label>
+                        <span className="text-[10px] text-brand-orange font-bold">Opsional</span>
+                      </div>
+                      <textarea
+                        placeholder="Contoh: Extra keju, Pedas level 2, Tanpa bawang bombay..."
+                        value={catatan}
+                        onChange={(e) => setCatatan(e.target.value)}
+                        rows={2.5}
+                        className="w-full border border-slate-200 rounded-2xl p-3 bg-slate-50 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none leading-relaxed"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3.5 border border-slate-200 rounded-full p-1.5 bg-slate-50 shadow-inner">
-                  <button
-                    type="button"
-                    disabled={jumlah <= 1}
-                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                    onClick={() => setJumlah(jumlah - 1)}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="font-extrabold text-slate-800 text-sm w-5 text-center">{jumlah}</span>
-                  <button
-                    type="button"
-                    disabled={jumlah >= menuDetail.stok}
-                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-brand-orange disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                    onClick={() => setJumlah(jumlah + 1)}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
+
               </div>
-
-              {/* Catatan Pemesanan (Bawang, Pedas, Keju dll) */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Catatan Pemesanan (Opsional)</label>
-                  <span className="text-[10px] text-brand-orange font-bold">Opsional</span>
-                </div>
-                <textarea
-                  placeholder="Contoh: Extra keju, Pedas level 2, Tanpa bawang bombay..."
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  rows={2.5}
-                  className="w-full border border-slate-200 rounded-2xl p-3 bg-slate-50 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none leading-relaxed"
-                />
-              </div>
-
             </div>
 
             {/* Footer Modal Action Buttons */}

@@ -75,15 +75,15 @@ export default function ManageMenu() {
       return;
     }
 
-    const hargaInt      = parseInt(harga);
-    const hargaMediumInt = parseInt(hargaMedium) || hargaInt;
+    const hargaMediumInt = parseInt(hargaMedium) || 35000;
     const hargaLargeInt  = parseInt(hargaLarge) || hargaMediumInt + 15000;
     const stokInt        = parseInt(stok);
 
     const formData = new FormData();
     formData.append('nama', nama);
     formData.append('deskripsi', deskripsi);
-    formData.append('harga', hargaInt.toString());
+    // Set `harga` using `hargaMediumInt` to satisfy the database model constraint.
+    formData.append('harga', hargaMediumInt.toString());
     formData.append('harga_medium', hargaMediumInt.toString());
     formData.append('harga_large', hargaLargeInt.toString());
     formData.append('stok', stokInt.toString());
@@ -157,18 +157,14 @@ export default function ManageMenu() {
                 <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} className="input-bs" required />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-[#212529] block mb-1">Harga Dasar (Rp)</label>
-                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} className="input-bs" required />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-[#212529] block mb-1">Harga Medium (Rp)</label>
                   <input type="number" value={hargaMedium} onChange={(e) => setHargaMedium(e.target.value)} placeholder={harga || '35000'} className="input-bs" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#212529] block mb-1">Harga Large (Rp)</label>
-                  <input type="number" value={hargaLarge} onChange={(e) => setHargaLarge(e.target.value)} placeholder={harga ? (parseInt(harga) + 15000).toString() : '50000'} className="input-bs" />
+                  <input type="number" value={hargaLarge} onChange={(e) => setHargaLarge(e.target.value)} placeholder={hargaMedium ? (parseInt(hargaMedium) + 15000).toString() : '50000'} className="input-bs" />
                 </div>
               </div>
 

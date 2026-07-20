@@ -30,9 +30,12 @@ import DataPelanggan from './pages/admin/DataPelanggan';
 import Profil from './pages/admin/Profil';
 import Laporan from './pages/admin/Laporan';
 import PesanPelanggan from './pages/admin/PesanPelanggan';
+import KelolaUlasan from './pages/admin/KelolaUlasan';
+import KelolaGaleri from './pages/admin/KelolaGaleri';
 
-// Halaman Publik Promo
+// Halaman Publik Promo & Galeri
 import Promo from './pages/Promo';
+import Galeri from './pages/Galeri';
 
 function App() {
   return (
@@ -45,6 +48,7 @@ function App() {
             <Route path="/menu" element={<Menu />} />
             <Route path="/promo" element={<Promo />} />
             <Route path="/tentang" element={<TentangKami />} />
+            <Route path="/galeri" element={<Galeri />} />
             <Route path="/kontak" element={<Kontak />} />
             <Route path="/masuk" element={<Masuk />} />
             <Route path="/daftar" element={<Daftar />} />
@@ -67,11 +71,15 @@ function App() {
             <Route path="kelola-menu" element={<KelolaMenu />} />
             <Route path="kelola-kategori" element={<KelolaKategori />} />
             <Route path="kelola-promo" element={<KelolaPromo />} />
+            <Route path="kelola-ulasan" element={<KelolaUlasan />} />
             <Route path="pesanan" element={<KelolaPesanan />} />
             <Route path="pelanggan" element={<DataPelanggan />} />
+            <Route path="galeri" element={<KelolaGaleri />} />
+            <Route path="data-pelanggan" element={<DataPelanggan />} />
             <Route path="profil" element={<Profil />} />
             <Route path="laporan" element={<Laporan />} />
             <Route path="pesan-pelanggan" element={<PesanPelanggan />} />
+            <Route path="ulasan" element={<KelolaUlasan />} />
           </Route>
         </Routes>
       </CartProvider>

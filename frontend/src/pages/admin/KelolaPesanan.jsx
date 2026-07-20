@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { getImageUrl } from '../../utils/imageUrl';
 import { Search, Eye, CheckCircle2, X, Edit, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -311,15 +312,16 @@ export default function KelolaPesanan() {
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Bukti Transfer Bank</p>
                   <div className="bg-gray-50 border border-gray-200 rounded p-2 text-center">
                     <a 
-                      href={`http://localhost:9000/uploads/${pesananTerpilih.bukti_pembayaran}`} 
+                      href={getImageUrl(pesananTerpilih.bukti_pembayaran)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="inline-block relative group"
                     >
                       <img 
-                        src={`http://localhost:9000/uploads/${pesananTerpilih.bukti_pembayaran}`} 
+                        src={getImageUrl(pesananTerpilih.bukti_pembayaran)} 
                         alt="Bukti Transfer" 
                         className="max-h-48 rounded border border-gray-200 shadow-sm object-contain mx-auto group-hover:opacity-90 transition-opacity"
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/300x400?text=Bukti+Gagal+Dimuat'; }}
                       />
                       <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[9px] px-2 py-0.5 rounded font-bold">Buka Gambar Asli ↗</span>
                     </a>

@@ -30,6 +30,14 @@ export default function TrackOrder() {
   const [verifikasiLoading, setVerifikasiLoading] = useState(false);
   const [snapTokenAktif, setSnapTokenAktif] = useState('');
 
+  // State Ulasan
+  const [modalUlasanBuka, setModalUlasanBuka] = useState(false);
+  const [menuUlasanTerpilih, setMenuUlasanTerpilih] = useState(null);
+  const [ratingUlasan, setRatingUlasan] = useState(5);
+  const [komentarUlasan, setKomentarUlasan] = useState('');
+  const [loadingUlasan, setLoadingUlasan] = useState(false);
+  const [ulasanSelesai, setUlasanSelesai] = useState([]); // Menyimpan menu_id yang sudah diulas
+
   const { token } = useAuth();
 
   // Load Pesanan dari Database / LocalStorage Fallback
@@ -140,7 +148,23 @@ export default function TrackOrder() {
               } else if (data.status === 'dikirim') {
                 Swal.fire({ icon: 'info', title: 'Pesanan Dikirim! 🛵', text: 'Pizza pesananmu sudah di jalan, harap tunggu ya.', timer: 4000, showConfirmButton: false });
               } else if (data.status === 'selesai') {
-                Swal.fire({ icon: 'success', title: 'Selesai! ✅', text: 'Pesanan telah selesai. Selamat menikmati Pizza-nya!', timer: 4000, showConfirmButton: false });
+                Swal.fire({ 
+                  icon: 'success', 
+                  title: 'Yeay! Pesanan Selesai 🍕', 
+                  html: 'Selamat menikmati Pizza-nya!<br/><br/><b>Bantu UMKM kami tumbuh</b> dengan memberikan ulasan Anda pada daftar menu di bawah ini ya!', 
+                  confirmButtonColor: '#ea580c',
+                  confirmButtonText: '⭐ Beri Ulasan Sekarang',
+                  showCancelButton: true,
+                  cancelButtonText: 'Nanti saja'
+                }).then((res) => {
+                  if (res.isConfirmed && prev.items && prev.items.length > 0) {
+                    // Buka modal ulasan langsung untuk menu pertama yang belum diulas
+                    setMenuUlasanTerpilih(prev.items[0]);
+                    setModalUlasanBuka(true);
+                  } else if (res.isConfirmed) {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                  }
+                });
               } else if (data.status === 'dibatalkan') {
                 Swal.fire({ icon: 'error', title: 'Oops! ❌', text: 'Pesananmu dibatalkan oleh Admin.', timer: 4000, showConfirmButton: false });
               }
@@ -363,6 +387,48 @@ export default function TrackOrder() {
         setBuktiPreview(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleKirimUlasan = async (e) => {
+    e.preventDefault();
+    if (!token) return;
+
+    setLoadingUlasan(true);
+    try {
+      const payload = {
+        menu_id: menuUlasanTerpilih.menu_id,
+        rating: ratingUlasan,
+        komentar: komentarUlasan
+      };
+
+      const res = await fetch(`http://localhost:9000/api/orders/${id}/ulasan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Terima kasih atas ulasan Anda! ⭐' });
+        
+        // Sembunyikan tombol ulasan untuk menu ini
+        setUlasanSelesai(prev => [...prev, menuUlasanTerpilih.menu_id]);
+
+        setModalUlasanBuka(false);
+        setMenuUlasanTerpilih(null);
+        setKomentarUlasan('');
+        setRatingUlasan(5);
+      } else {
+        const data = await res.json();
+        Swal.fire({ icon: 'error', title: 'Oops', text: data.error || 'Gagal mengirim ulasan.' });
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Oops', text: 'Gagal terhubung ke server.' });
+    } finally {
+      setLoadingUlasan(false);
     }
   };
 
@@ -698,14 +764,18 @@ export default function TrackOrder() {
           )}
 
           {pesanan.status === 'selesai' && (
-            <div className="border border-emerald-250 shadow-md bg-emerald-500/5 rounded-2xl p-6 text-left flex items-start gap-4">
-              <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                <CheckCircle2 className="w-6 h-6" />
+            <div className="border-2 border-brand-orange shadow-lg bg-orange-50 rounded-2xl p-6 text-left flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden animate-in zoom-in duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-orange rounded-full opacity-10 -mr-10 -mt-10"></div>
+              <div className="w-16 h-16 bg-gradient-to-br from-brand-orange to-orange-500 text-white rounded-full flex items-center justify-center shrink-0 shadow-lg text-3xl">
+                🍕
               </div>
-              <div className="flex flex-col gap-1.5">
-                <h4 className="font-extrabold text-emerald-800 text-base">Pesanan Selesai Terkirim!</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Terima kasih telah memesan pizza rumahan di Vipizza Homemade Padang. Dukungan Anda sangat berarti bagi kelangsungan UMKM kami! Semoga menikmati pizza hangatnya.
+              <div className="flex flex-col gap-2 flex-1 z-10">
+                <h4 className="font-black text-brand-orange text-lg uppercase tracking-wider drop-shadow-sm">Pesanan Selesai Terkirim!</h4>
+                <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                  Terima kasih telah memesan pizza rumahan di Vipizza! Dukungan Anda sangat berarti bagi UMKM kami. 
+                  <br/><br/>
+                  <span className="font-bold text-brand-orange text-base bg-orange-100 px-2 py-0.5 rounded">Bantu kami menjadi lebih baik! 👇</span> 
+                  <br/>Yuk, bagikan pengalaman rasa Anda dengan memberikan bintang dan ulasan pada daftar pesanan Anda!
                 </p>
               </div>
             </div>
@@ -752,9 +822,28 @@ export default function TrackOrder() {
                       </span>
                     )}
                   </div>
-                  <span className="font-bold text-slate-700 text-sm">
-                    Rp {((item.jumlah || 1) * (item.harga || 0)).toLocaleString('id-ID')}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="font-bold text-slate-700 text-sm">
+                      Rp {((item.jumlah || 1) * (item.harga || 0)).toLocaleString('id-ID')}
+                    </span>
+                    {pesanan.status === 'selesai' && (
+                      ulasanSelesai.includes(item.menu_id) ? (
+                        <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded font-bold cursor-default">
+                          ✅ Diulas
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setMenuUlasanTerpilih(item);
+                            setModalUlasanBuka(true);
+                          }}
+                          className="text-[10px] text-brand-orange border border-brand-orange hover:bg-brand-orange hover:text-white transition-colors px-2 py-1 rounded cursor-pointer font-bold"
+                        >
+                          ⭐ Beri Ulasan
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -819,6 +908,56 @@ export default function TrackOrder() {
 
       </div>
 
+      {/* Modal Ulasan */}
+      {modalUlasanBuka && menuUlasanTerpilih && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-800">
+            <div className="p-5 flex justify-between items-center border-b border-gray-100">
+              <h3 className="font-black text-lg">Beri Ulasan Produk</h3>
+              <button onClick={() => setModalUlasanBuka(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleKirimUlasan} className="p-6 flex flex-col gap-4 text-left">
+              <div className="mb-2">
+                <span className="text-xs text-slate-500">Produk yang diulas:</span>
+                <h4 className="font-bold text-sm text-brand-orange">{menuUlasanTerpilih.menu_nama}</h4>
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-2">Berapa Bintang? ⭐</label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star} type="button"
+                      onClick={() => setRatingUlasan(star)}
+                      className={`transition-transform hover:scale-110 ${ratingUlasan >= star ? 'text-amber-400' : 'text-gray-200'} cursor-pointer`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Komentar (Opsional)</label>
+                <textarea
+                  rows="3"
+                  value={komentarUlasan} onChange={e => setKomentarUlasan(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-brand-orange text-sm resize-none"
+                  placeholder="Ceritakan pengalaman Anda mengenai produk ini..."
+                />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loadingUlasan}
+                className="w-full mt-2 py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90 shadow-md bg-brand-orange disabled:opacity-50"
+              >
+                {loadingUlasan ? "Mengirim..." : "Kirim Ulasan"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

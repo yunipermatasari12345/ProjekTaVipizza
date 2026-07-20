@@ -18,6 +18,8 @@ import {
   User,
   Layers,
   MessageSquare,
+  Star,
+  Image,
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -139,6 +141,7 @@ export default function AdminLayout() {
         { to: '/admin/kelola-menu', icon: Pizza, label: 'Data Menu' },
         { to: '/admin/kelola-kategori', icon: Layers, label: 'Kategori Menu' },
         { to: '/admin/kelola-promo', icon: Tag, label: 'Kode Promo' },
+        { to: '/admin/galeri', icon: Image, label: 'Galeri Foto' },
       ],
     },
     {
@@ -152,6 +155,7 @@ export default function AdminLayout() {
       label: 'LAINNYA',
       items: [
         { to: '/admin/pelanggan', icon: Users, label: 'Pelanggan' },
+        { to: '/admin/ulasan', icon: Star, label: 'Data Ulasan' },
         { to: '/admin/pesan-pelanggan', icon: MessageSquare, label: 'Pesan Pelanggan', badge: jumlahPesanPelanggan },
         { to: '/admin/profil', icon: User, label: 'Profil' },
         { to: '/', icon: Home, label: 'Lihat Website' },

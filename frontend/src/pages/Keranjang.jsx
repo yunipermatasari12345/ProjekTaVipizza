@@ -195,18 +195,19 @@ export default function Cart() {
       </div>
 
       {keranjang.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="flex flex-col gap-8">
           
-          {/* Kolom Kiri: Daftar Keranjang */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
+          {/* Bagian Atas: Daftar Keranjang (Full Width) */}
+          <div className="w-full flex flex-col gap-4">
             {keranjang.map((item) => {
               if (!item || !item.menu) return null;
               return (
                 <div 
                   key={item.menu.id} 
-                  className="card-fe-white p-4 flex flex-col sm:flex-row items-center gap-4"
+                  className="card-fe-white p-4 flex flex-col gap-3"
                 >
-                  {/* Gambar Pizza */}
+                  {/* BARIS ATAS: Gambar & Info Produk */}
+                  <div className="flex items-start gap-4">
                     <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-200">
                       <img 
                         src={getImageUrl(item.menu.gambar_url) || "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=200"} 
@@ -214,65 +215,68 @@ export default function Cart() {
                         className="w-full h-full object-cover" 
                       />
                     </div>
-
-                  {/* Keterangan & Jumlah */}
-                  <div className="flex-grow flex flex-col gap-1 w-full text-left">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-brand-orange bg-pink-50 px-2 py-0.5 rounded self-start">
-                      {item.menu.kategori}
-                    </span>
-                    <h3 className="font-bold text-slate-800 text-base mt-1">{item.menu.nama}</h3>
-                    <p className="text-xs text-brand-orange font-extrabold mt-0.5">
-                      Rp {(item.menu.harga || 0).toLocaleString('id-ID')} / porsi
-                    </p>
-                  
-                  {/* Catatan tambahan (opsional) */}
-                  <div className="mt-1.5 w-full">
-                    <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Catatan tambahan (opsional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="Contoh: Extra keju, Pedas level 2, Tanpa bawang..."
-                      value={item.catatan || ''}
-                      onChange={(e) => ubahCatatanItem(item.menu.id, e.target.value)}
-                      className="w-full max-w-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-pink-500/50"
-                    />
+                    <div className="flex flex-col gap-1 text-left pt-1">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-brand-orange bg-pink-50 px-2 py-0.5 rounded self-start">
+                        {item.menu.kategori}
+                      </span>
+                      <h3 className="font-bold text-slate-800 text-base mt-1 leading-tight">{item.menu.nama}</h3>
+                      <p className="text-sm text-brand-orange font-extrabold mt-0.5">
+                        Rp {(item.menu.harga || 0).toLocaleString('id-ID')} / porsi
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Selector Jumlah */}
-                <div className="flex items-center gap-3 border border-slate-200 rounded-full px-2 py-1 bg-slate-50 shrink-0">
-                  <button 
-                    className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors cursor-pointer"
-                    onClick={() => ubahJumlahItem(item.menu.id, item.jumlah - 1)}
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="font-bold text-slate-800 text-sm w-4 text-center">{item.jumlah}</span>
-                  <button 
-                    className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors cursor-pointer"
-                    onClick={() => ubahJumlahItem(item.menu.id, item.jumlah + 1)}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                  {/* BARIS BAWAH: Catatan (Kiri) & Aksi/Kuantitas (Kanan) */}
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4 border-t border-slate-100 pt-3 mt-1">
+                    {/* Catatan (Lebar) */}
+                    <div className="flex-grow w-full sm:w-auto">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Catatan tambahan (opsional)</label>
+                      <input 
+                        type="text" 
+                        placeholder="Contoh: Extra keju, Pedas level 2..."
+                        value={item.catatan || ''}
+                        onChange={(e) => ubahCatatanItem(item.menu.id, e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-pink-500/50"
+                      />
+                    </div>
 
-                {/* Tombol Hapus */}
-                <button 
-                  className="p-2 hover:bg-red-50 rounded-full transition-colors cursor-pointer shrink-0"
-                  onClick={() => {
-                    hapusDariKeranjang(item.menu.id);
-                    Swal.fire({ icon: 'success', title: 'Dihapus', text: `${item.menu.nama} dihapus dari keranjang belanja!`, timer: 1500, showConfirmButton: false });
-                  }}
-                >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </button>
+                    {/* Selector Jumlah & Hapus */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-3 border border-slate-200 rounded-full px-2 py-1 bg-slate-50">
+                        <button 
+                          className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors cursor-pointer"
+                          onClick={() => ubahJumlahItem(item.menu.id, item.jumlah - 1)}
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="font-bold text-slate-800 text-sm w-4 text-center">{item.jumlah}</span>
+                        <button 
+                          className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors cursor-pointer"
+                          onClick={() => ubahJumlahItem(item.menu.id, item.jumlah + 1)}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <button 
+                        className="p-2 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+                        onClick={() => {
+                          hapusDariKeranjang(item.menu.id);
+                          Swal.fire({ icon: 'success', title: 'Dihapus', text: `${item.menu.nama} dihapus dari keranjang belanja!`, timer: 1500, showConfirmButton: false });
+                        }}
+                      >
+                        <Trash2 className="w-5 h-5 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
 
               </div>
             );
           })}
           </div>
 
-          {/* Kolom Kanan: Rincian Pembayaran & Form Checkout */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
+          {/* Bagian Bawah (Gandeng Dua): Ringkasan Pesanan & Form Checkout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             
             {/* 1. Ringkasan Belanja */}
             <div className="card-fe-white p-6 text-left">
@@ -396,25 +400,25 @@ export default function Cart() {
                       Metode Pembayaran
                     </span>
                     
-                    <div className="flex flex-col gap-2.5 mt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
                       {[
-                        { value: 'midtrans', label: 'Bayar Otomatis (Midtrans)', desc: 'Gopay, ShopeePay, VA BCA, Mandiri, dll' },
-                        { value: 'transfer_bank', label: 'Transfer Bank', desc: 'BCA / Mandiri / BNI — Upload bukti bayar' },
-                        { value: 'qris', label: 'QRIS', desc: 'Scan QR via GoPay, ShopeePay, OVO, dll — Upload bukti bayar' },
+                        { value: 'midtrans', label: 'Bayar Otomatis', desc: 'Gopay, VA, dll' },
+                        { value: 'transfer_bank', label: 'Transfer Bank', desc: 'BCA/Mandiri/BNI' },
+                        { value: 'qris', label: 'QRIS', desc: 'Scan QR Code' },
                       ].map(met => (
-                        <label key={met.value} className={`border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer w-full transition-colors ${metodePembayaran === met.value ? 'border-brand-orange bg-brand-orange-light/30 ring-1 ring-brand-orange' : 'border-slate-200 hover:border-slate-300'}`}>
-                          <input 
-                            type="radio" 
-                            name="metode" 
-                            value={met.value}
-                            checked={metodePembayaran === met.value}
-                            onChange={() => setMetodePembayaran(met.value)}
-                            className="mt-1 accent-brand-orange"
-                          />
-                          <div className="flex flex-col">
+                        <label key={met.value} className={`border rounded-xl p-3 flex flex-col sm:items-center sm:text-center sm:justify-center items-start gap-2 cursor-pointer w-full transition-colors ${metodePembayaran === met.value ? 'border-brand-orange bg-brand-orange-light/30 ring-1 ring-brand-orange' : 'border-slate-200 hover:border-slate-300'}`}>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="radio" 
+                              name="metode" 
+                              value={met.value}
+                              checked={metodePembayaran === met.value}
+                              onChange={() => setMetodePembayaran(met.value)}
+                              className="accent-brand-orange"
+                            />
                             <span className="font-bold text-xs text-slate-800">{met.label}</span>
-                            <span className="text-[10px] text-slate-400 mt-0.5">{met.desc}</span>
                           </div>
+                          <span className="text-[10px] text-slate-400 leading-tight">{met.desc}</span>
                         </label>
                       ))}
                     </div>

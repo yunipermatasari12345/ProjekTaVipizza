@@ -153,26 +153,23 @@ func BuatPesanan(c *gin.Context) {
 			Name:  "Ongkos Kirim (Padang)",
 		})
 
-		// Tambah diskon sebagai item negatif
-		if totalDiskon > 0 {
-			snapItems = append(snapItems, midtrans.ItemDetails{
-				ID:    "DISCOUNT",
-				Price: int64(-totalDiskon),
-				Qty:   1,
-				Name:  fmt.Sprintf("Diskon Promo %d%%", diskonPersen),
-			})
-		}
-
 		// Ambil data pelanggan
 		var peng models.Pengguna
 		tx.First(&peng, userID)
+
+		// Jika ada diskon, kita tidak mengirimkan rincian item ke Midtrans
+		// karena Midtrans tidak mendukung harga item negatif dan total rincian harus sama dengan GrossAmt.
+		var ptrSnapItems *[]midtrans.ItemDetails
+		if totalDiskon == 0 {
+			ptrSnapItems = &snapItems
+		}
 
 		snapReq := &snap.Request{
 			TransactionDetails: midtrans.TransactionDetails{
 				OrderID:  orderIDStr,
 				GrossAmt: int64(pesananBaru.TotalHarga),
 			},
-			Items: &snapItems,
+			Items: ptrSnapItems,
 			CustomerDetail: &midtrans.CustomerDetails{
 				FName: peng.Nama,
 				Email: peng.Email,
@@ -445,6 +442,17 @@ func PerbaruiStatusPesanan(c *gin.Context) {
 		pesanan.StatusPembayaran = "gagal"
 	}
 
+	// Tambah jumlah terjual ke menu jika status menjadi 'selesai'
+	if statusBaru == "selesai" && statusLama != "selesai" {
+		for _, item := range pesanan.ItemPesanan {
+			var menu models.Menu
+			if err := tx.First(&menu, item.MenuID).Error; err == nil {
+				menu.Terjual += item.Jumlah
+				tx.Save(&menu)
+			}
+		}
+	}
+
 	if err := tx.Save(&pesanan).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status pesanan"})
@@ -536,12 +544,30 @@ func RefreshSnapToken(c *gin.Context) {
 	var peng models.Pengguna
 	config.DB.First(&peng, userID)
 
+	// Tambah ongkos kirim sebagai item
+	ongkosKirim := 10000
+	if pesanan.TotalHarga <= 0 {
+		ongkosKirim = 0
+	}
+	snapItems = append(snapItems, midtrans.ItemDetails{
+		ID:    "SHIPPING",
+		Price: int64(ongkosKirim),
+		Qty:   1,
+		Name:  "Ongkos Kirim (Padang)",
+	})
+
+	// Jika ada diskon, kita tidak mengirimkan rincian item ke Midtrans
+	var ptrSnapItems *[]midtrans.ItemDetails
+	if pesanan.Diskon == 0 {
+		ptrSnapItems = &snapItems
+	}
+
 	snapReq := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
 			OrderID:  orderIDStr,
 			GrossAmt: int64(pesanan.TotalHarga),
 		},
-		Items: &snapItems,
+		Items: ptrSnapItems,
 		CustomerDetail: &midtrans.CustomerDetails{
 			FName: peng.Nama,
 			Email: peng.Email,

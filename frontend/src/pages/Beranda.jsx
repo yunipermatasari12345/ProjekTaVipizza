@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Pizza, Clock, ThumbsUp, ShieldCheck, Truck, Smile, Heart, Star, X, MessageSquarePlus } from 'lucide-react';
+import { Pizza, Clock, ThumbsUp, ShieldCheck, Truck, Smile, Heart, Star, X, MessageSquarePlus, TrendingUp, BarChart3, Trash2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUrl';
+import Swal from 'sweetalert2';
+import { useAuth } from '../context/AuthContext';
 
 // ===================================================
 // WARNA BRAND VIPIZZA
@@ -12,14 +14,18 @@ import { getImageUrl } from '../utils/imageUrl';
 // ===================================================
 
 export default function Beranda() {
-  const [menuFavorit, setMenuFavorit] = useState([]);
+  const [menuBestSeller, setMenuBestSeller] = useState([]);
+  const [semuaMenu, setSemuaMenu] = useState([]);
   const [promoAktif, setPromoAktif] = useState([]);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
 
   // State Testimoni
   const [testimoniList, setTestimoniList] = useState([]);
   const [modalTestiBuka, setModalTestiBuka] = useState(false);
-  const [formTesti, setFormTesti] = useState({ nama: '', lokasi: '', teks: '', rating: 5 });
+  const [formTesti, setFormTesti] = useState({ nama_publik: '', menu_id: '', teks: '', rating: 5 });
+  const [loadingTesti, setLoadingTesti] = useState(false);
+
+  const { token, user } = useAuth();
 
   const heroImages = [
     'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&q=95&w=1800',
@@ -53,61 +59,173 @@ export default function Beranda() {
   ];
 
   useEffect(() => {
-    fetch('http://localhost:9000/api/menus')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d) && d.length > 0) {
-          const favs = d.filter(m => m.is_favorit === true);
-          setMenuFavorit(favs.length > 0 ? favs.slice(0, 3) : d.slice(0, 3));
-        } else {
-          setMenuFavorit(menuDefault);
-        }
-      })
-      .catch(() => setMenuFavorit(menuDefault));
+    // Fungsi untuk mengambil data terbaru (Menu & Ulasan)
+    const fetchData = () => {
+      // 1. Fetch Menu (Untuk Best Seller)
+      fetch('http://localhost:9000/api/menus')
+        .then(r => r.json())
+        .then(d => {
+          if (Array.isArray(d) && d.length > 0) {
+            setSemuaMenu(d);
+            // Kombinasi Rekomendasi: 1. Input Admin (is_best_seller) 2. Paling banyak dipesan (terjual)
+            const sortedMenus = [...d].sort((a, b) => {
+              if (a.is_best_seller && !b.is_best_seller) return -1;
+              if (!a.is_best_seller && b.is_best_seller) return 1;
+              return (b.terjual || 0) - (a.terjual || 0);
+            });
+            // Tampilkan hingga 6 menu (2 baris) di Beranda
+            setMenuBestSeller(sortedMenus.slice(0, 6));
+          } else {
+            setSemuaMenu(menuDefault);
+            setMenuBestSeller(menuDefault);
+          }
+        })
+        .catch(() => setMenuBestSeller(menuDefault));
 
+      // 2. Fetch Ulasan Terbaru (Polling untuk Testimoni)
+      fetch('http://localhost:9000/api/ulasan/terbaru')
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const formatted = data.map(ulasan => ({
+              id: ulasan.id,
+              nama: ulasan.nama_publik || (ulasan.pengguna ? ulasan.pengguna.nama : 'Pelanggan VIPizza'),
+              lokasi: 'Padang',
+              menu: ulasan.menu ? ulasan.menu.nama : 'Pizza',
+              menu_jumlah_ulasan: ulasan.menu ? ulasan.menu.jumlah_ulasan : 0,
+              teks: ulasan.komentar ? `"${ulasan.komentar}"` : '"Pizzanya enak banget!"',
+              rating: ulasan.rating
+            }));
+            setTestimoniList(formatted);
+          } else {
+            setTestimoniList([
+              { id: 1, nama: 'Budi Santoso', lokasi: 'Kuranji', menu: 'Sosis Lovers Pizza', menu_jumlah_ulasan: 15, teks: '"Pizzanya lumer banget, ukurannya pas untuk kumpul keluarga! Pengantarannya juga cepat dan ramah."', rating: 5 },
+              { id: 2, nama: 'Siti Aisyah', lokasi: 'Padang Barat', menu: 'Beef Burger Moza Pizza', menu_jumlah_ulasan: 8, teks: '"Gak nyangka di Padang ada pizza seenak ini, rasanya beneran autentik dan topping dagingnya sangat melimpah."', rating: 5 }
+            ]);
+          }
+        })
+        .catch(() => {
+          // Abaikan error agar data lama tetap tampil
+        });
+    };
+
+    // Eksekusi pertama kali
+    fetchData();
+
+    // Auto-refresh (polling) setiap 10 detik
+    const pollingInterval = setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    // Fetch Promo (Hanya sekali di awal)
     fetch('http://localhost:9000/api/promo')
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setPromoAktif(d.slice(0, 1)); })
       .catch(() => {});
 
     // Hero Image Carousel Interval
-    const interval = setInterval(() => {
+    const heroInterval = setInterval(() => {
       setHeroImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
-    }, 5000); // Ganti foto setiap 5 detik
+    }, 5000);
 
-    // Load Testimoni
-    const savedTesti = localStorage.getItem('vipizza_testimoni');
-    if (savedTesti) {
-      setTestimoniList(JSON.parse(savedTesti));
-    } else {
-      setTestimoniList([
-        { id: 1, nama: 'Budi Santoso', lokasi: 'Kuranji', teks: '"Pizzanya lumer banget, ukurannya pas untuk kumpul keluarga! Pengantarannya juga cepat dan ramah."', rating: 5 },
-        { id: 2, nama: 'Siti Aisyah', lokasi: 'Padang Barat', teks: '"Gak nyangka di Padang ada pizza seenak ini, rasanya beneran autentik dan topping dagingnya sangat melimpah."', rating: 5 },
-        { id: 3, nama: 'Rina Marlina', lokasi: 'Siteba', teks: '"Anak-anak pada suka banget sama Cheese Corn Moza-nya. Kejunya bener-bener lumer. Pasti bakal pesan lagi!"', rating: 5 },
-      ]);
-    }
-
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(heroInterval);
+      clearInterval(pollingInterval);
+    };
   }, []);
 
-  const handleKirimTesti = (e) => {
+  const handleKirimTesti = async (e) => {
     e.preventDefault();
-    if (!formTesti.nama || !formTesti.teks) return;
-    const newTesti = {
-      id: Date.now(),
-      nama: formTesti.nama,
-      lokasi: formTesti.lokasi || 'Padang',
-      teks: `"${formTesti.teks}"`,
-      rating: formTesti.rating
-    };
-    const updatedList = [newTesti, ...testimoniList];
-    setTestimoniList(updatedList);
-    localStorage.setItem('vipizza_testimoni', JSON.stringify(updatedList));
-    setModalTestiBuka(false);
-    setFormTesti({ nama: '', lokasi: '', teks: '', rating: 5 });
+    if (!formTesti.nama_publik || !formTesti.menu_id) return;
+
+    setLoadingTesti(true);
+    try {
+      const payload = {
+        nama_publik: formTesti.nama_publik,
+        menu_id: parseInt(formTesti.menu_id),
+        rating: formTesti.rating,
+        komentar: formTesti.teks
+      };
+
+      const res = await fetch('http://localhost:9000/api/ulasan/publik', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        // Ambil nama menu dari id untuk tampilan
+        const menuTerpilih = semuaMenu.find(m => m.id === parseInt(formTesti.menu_id));
+        const newTesti = {
+          id: Date.now(),
+          nama: formTesti.nama_publik,
+          lokasi: 'Padang',
+          menu: menuTerpilih ? menuTerpilih.nama : 'Pizza',
+          teks: `"${formTesti.teks}"`,
+          rating: formTesti.rating
+        };
+        setTestimoniList([newTesti, ...testimoniList]);
+        setModalTestiBuka(false);
+        setFormTesti({ nama_publik: '', menu_id: '', teks: '', rating: 5 });
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Terima kasih! Ulasan Anda berhasil ditambahkan.',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        const data = await res.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: data.error || 'Terjadi kesalahan saat mengirim ulasan.'
+        });
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Gagal terhubung ke server.'
+      });
+    } finally {
+      setLoadingTesti(false);
+    }
   };
 
-  const tampilMenu = menuFavorit.length > 0 ? menuFavorit : menuDefault;
+  const handleHapusUlasan = async (id) => {
+    if (!token || user?.peran !== 'admin') return;
+    
+    const result = await Swal.fire({
+      title: 'Hapus Ulasan?',
+      text: "Ulasan ini akan dihapus secara permanen!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`http://localhost:9000/api/ulasan/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          setTestimoniList(testimoniList.filter(t => t.id !== id));
+          Swal.fire('Terhapus!', 'Ulasan telah dihapus.', 'success');
+        } else {
+          Swal.fire('Gagal!', 'Tidak dapat menghapus ulasan.', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error!', 'Gagal terhubung ke server.', 'error');
+      }
+    }
+  };
+
+  const tampilMenu = menuBestSeller.length > 0 ? menuBestSeller : menuDefault;
 
   const features = [
     { icon: Pizza,       title: 'Bahan Segar',      desc: 'Bahan baku berkualitas tinggi.' },
@@ -294,13 +412,13 @@ export default function Beranda() {
         </div>
       </section>
 
-      {/* ===== MENU FAVORIT ===== */}
+      {/* ===== MENU BEST SELLER ===== */}
       <section className="py-16" style={{ backgroundColor: brandLight }}>
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <p style={{ color: brandPrimary }} className="text-xs tracking-widest uppercase font-bold mb-2">— Pilihan Pelanggan —</p>
-          <h2 style={{ color: brandDark, fontFamily: "'Outfit', sans-serif" }} className="text-3xl md:text-4xl font-black mb-4">Menu Favorit Kami</h2>
+          <p style={{ color: brandPrimary }} className="text-xs tracking-widest uppercase font-bold mb-2">🔥 Rekomendasi Terpopuler 🔥</p>
+          <h2 style={{ color: brandDark, fontFamily: "'Outfit', sans-serif" }} className="text-3xl md:text-4xl font-black mb-4">Menu Best Seller</h2>
           <p className="text-gray-500 text-sm max-w-xl mx-auto mb-12">
-            Pizza homemade dengan resep autentik, dibuat dengan cinta dan disajikan segar setiap hari.
+            Pilihan favorit pelanggan! Pizza homemade dengan resep autentik yang paling banyak dipesan.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -317,14 +435,14 @@ export default function Beranda() {
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="font-black text-xl mb-1" style={{ color: brandDark }}>{menu.nama}</h3>
                   
-                  {/* Rating Visual Dinamis (berdasarkan ID agar konsisten) */}
+                  {/* Rating Visual Dinamis */}
                   <div className="flex items-center gap-1 mb-3">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                     <span className="text-sm font-bold text-slate-700">
-                      {(4.5 + ((menu.id || 1) % 6) * 0.1).toFixed(1)}
+                      {menu.rating > 0 ? Number(menu.rating).toFixed(1) : "0.0"}
                     </span>
                     <span className="text-xs text-slate-400">
-                      ({120 + ((menu.id || 1) * 17) % 300})
+                      ({menu.jumlah_ulasan || 0})
                     </span>
                   </div>
 
@@ -348,47 +466,107 @@ export default function Beranda() {
         </div>
       </section>
 
-      {/* ===== TESTIMONI PELANGGAN (Kecil/Sedang) ===== */}
-      <section className="py-12 bg-[#FDF9F5] border-t border-b border-[#E8DDD5]/40">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-8">
-            <h2 style={{ color: brandDark, fontFamily: "'Outfit', sans-serif" }} className="text-2xl md:text-3xl font-black mb-2">Apa Kata Mereka?</h2>
-            <p className="text-gray-500 text-xs uppercase tracking-widest font-semibold">— Testimoni Pelanggan Setia VIPizza —</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimoniList.slice(0, 3).map((testi) => (
-              <div key={testi.id} className="bg-white p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-[#E8DDD5]/60 flex flex-col">
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(testi.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  ))}
+      {/* ===== POLLING GRAFIK & TESTIMONI (SIDE-BY-SIDE) ===== */}
+      <section className="py-16 bg-[#FDF9F5] border-t border-b border-[#E8DDD5]/40">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            
+            {/* KIRI: GRAFIK POLLING MENU */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-[#E8DDD5]/60 h-full">
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="w-5 h-5 text-brand-orange" />
+                  <p style={{ color: brandPrimary }} className="text-xs tracking-widest uppercase font-bold">Live Polling</p>
                 </div>
-                <p className="text-gray-600 text-sm italic flex-1 mb-4 leading-relaxed line-clamp-3">
-                  {testi.teks}
-                </p>
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-100 mt-auto">
-                  <div className="w-8 h-8 rounded-full bg-[#8B3A0F]/10 flex items-center justify-center text-[#8B3A0F] font-bold text-xs shrink-0">
-                    {testi.nama.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="font-bold text-xs truncate" style={{ color: brandDark }}>{testi.nama}</p>
-                    <p className="text-[10px] text-gray-400 truncate">{testi.lokasi}</p>
-                  </div>
-                </div>
+                <h2 style={{ color: brandDark, fontFamily: "'Outfit', sans-serif" }} className="text-2xl md:text-3xl font-black mb-2">Menu Paling Banyak Diulas</h2>
+                <p className="text-gray-500 text-sm">Grafik ini otomatis naik secara real-time setiap kali pelanggan memberikan ulasannya!</p>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-10 flex justify-center">
-            <button 
-              onClick={() => setModalTestiBuka(true)}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-full border-2 text-sm font-bold transition-all hover:-translate-y-0.5"
-              style={{ borderColor: brandPrimary, color: brandPrimary, backgroundColor: 'transparent' }}
-            >
-              <MessageSquarePlus className="w-4 h-4" />
-              Tulis Ulasan Anda
-            </button>
+              <div className="flex flex-col gap-6">
+                {[...semuaMenu]
+                  .sort((a, b) => (b.jumlah_ulasan || 0) - (a.jumlah_ulasan || 0))
+                  .slice(0, 5)
+                  .map((menu, idx) => {
+                    const maxUlasan = Math.max(...semuaMenu.map(m => m.jumlah_ulasan || 0), 1);
+                    const persentase = ((menu.jumlah_ulasan || 0) / maxUlasan) * 100;
+                    
+                    return (
+                      <div key={menu.id}>
+                        <div className="flex justify-between items-end mb-2">
+                          <div className="flex items-center gap-3">
+                            <span className="font-black text-gray-300 text-lg">#{idx + 1}</span>
+                            <span className="font-bold text-sm" style={{ color: brandDark }}>{menu.nama}</span>
+                          </div>
+                          <span className="text-xs font-bold text-gray-500">{menu.jumlah_ulasan || 0} Ulasan</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000 ease-out relative"
+                            style={{ 
+                              width: `${persentase}%`, 
+                              backgroundColor: idx === 0 ? brandPrimary : '#f97316' 
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-white/20"></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                })}
+              </div>
+            </div>
+
+            {/* KANAN: TESTIMONI TERBARU */}
+            <div className="flex flex-col h-full">
+              <div className="mb-8">
+                <p style={{ color: brandPrimary }} className="text-xs tracking-widest uppercase font-bold mb-2">💬 Kata Mereka</p>
+                <h2 style={{ color: brandDark, fontFamily: "'Outfit', sans-serif" }} className="text-2xl md:text-3xl font-black mb-2">Ulasan Terbaru</h2>
+                <p className="text-gray-500 text-sm">Pendapat langsung dari para pelanggan setia VIPizza.</p>
+              </div>
+
+              <div className="flex flex-col gap-4 flex-1">
+                {testimoniList.slice(0, 3).map((testi) => (
+                  <div key={testi.id} className="bg-white p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-[#E8DDD5]/60 flex flex-col relative group">
+                    {user?.peran === 'admin' && (
+                      <button 
+                        onClick={() => handleHapusUlasan(testi.id)}
+                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-all z-10"
+                        title="Hapus Ulasan"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 mb-2">
+                      {[...Array(testi.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                    <p className="text-gray-600 text-sm italic flex-1 mb-3 leading-relaxed line-clamp-2">
+                      {testi.teks}
+                    </p>
+                    <div className="flex items-center gap-3 pt-3 border-t border-gray-100 mt-auto">
+                      <div className="w-8 h-8 rounded-full bg-[#8B3A0F]/10 flex items-center justify-center text-[#8B3A0F] font-bold text-xs shrink-0">
+                        {testi.nama.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="overflow-hidden flex flex-col gap-1 w-full">
+                        <p className="font-bold text-xs truncate" style={{ color: brandDark }}>{testi.nama}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] text-brand-orange font-semibold truncate bg-pink-50 px-2 py-0.5 rounded-full w-fit max-w-[120px]">
+                            {testi.menu}
+                          </p>
+                          {testi.menu_jumlah_ulasan >= 2 && (
+                            <p className="text-[9px] text-white font-bold bg-green-500 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                              <Star className="w-2.5 h-2.5 fill-white" /> Sering Diulas
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>
@@ -434,34 +612,38 @@ export default function Beranda() {
         </div>
       </section>
 
-      {/* MODAL INPUT TESTIMONI */}
+      {/* MODAL INPUT TESTIMONI PUBLIK */}
       {modalTestiBuka && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" style={{ color: brandDark }}>
             <div className="p-5 flex justify-between items-center border-b border-gray-100">
-              <h3 className="font-black text-lg">Tulis Ulasan Anda</h3>
+              <h3 className="font-black text-lg">Beri Ulasan Produk</h3>
               <button onClick={() => setModalTestiBuka(false)} className="text-gray-400 hover:text-red-500 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleKirimTesti} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleKirimTesti} className="p-6 flex flex-col gap-4 text-left">
+              <div>
+                <label className="block text-xs font-bold mb-1">Pilih Pizza / Produk *</label>
+                <select 
+                  required
+                  value={formTesti.menu_id} onChange={e => setFormTesti({...formTesti, menu_id: e.target.value})}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#8B3A0F] text-sm bg-white"
+                >
+                  <option value="" disabled>-- Pilih Menu --</option>
+                  {semuaMenu.map(menu => (
+                    <option key={menu.id} value={menu.id}>{menu.nama}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-bold mb-1">Nama Anda *</label>
                 <input 
                   type="text" required
-                  value={formTesti.nama} onChange={e => setFormTesti({...formTesti, nama: e.target.value})}
+                  value={formTesti.nama_publik} onChange={e => setFormTesti({...formTesti, nama_publik: e.target.value})}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#8B3A0F] text-sm"
                   placeholder="Misal: Budi Santoso"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold mb-1">Lokasi (Kecamatan / Kelurahan)</label>
-                <input 
-                  type="text" 
-                  value={formTesti.lokasi} onChange={e => setFormTesti({...formTesti, lokasi: e.target.value})}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#8B3A0F] text-sm"
-                  placeholder="Misal: Kuranji"
                 />
               </div>
               <div>
@@ -471,7 +653,7 @@ export default function Beranda() {
                     <button 
                       key={star} type="button"
                       onClick={() => setFormTesti({...formTesti, rating: star})}
-                      className={`transition-transform hover:scale-110 ${formTesti.rating >= star ? 'text-amber-400' : 'text-gray-200'}`}
+                      className={`transition-transform hover:scale-110 ${formTesti.rating >= star ? 'text-amber-400' : 'text-gray-200'} cursor-pointer`}
                     >
                       <Star className="w-6 h-6 fill-current" />
                     </button>
@@ -479,21 +661,22 @@ export default function Beranda() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold mb-1">Ulasan Anda *</label>
+                <label className="block text-xs font-bold mb-1">Komentar Singkat *</label>
                 <textarea 
-                  required rows="3"
+                  required rows="2"
                   value={formTesti.teks} onChange={e => setFormTesti({...formTesti, teks: e.target.value})}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#8B3A0F] text-sm resize-none"
-                  placeholder="Ceritakan pengalaman Anda menikmati Vipizza..."
+                  placeholder="Rasanya enak dan kejunya lumer..."
                 />
               </div>
               
               <button 
                 type="submit" 
-                className="w-full mt-2 py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90 shadow-md"
+                disabled={loadingTesti}
+                className="w-full mt-2 py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90 shadow-md cursor-pointer disabled:opacity-50"
                 style={{ backgroundColor: brandPrimary }}
               >
-                Kirim Ulasan
+                {loadingTesti ? 'Mengirim...' : 'Kirim Ulasan'}
               </button>
             </form>
           </div>
