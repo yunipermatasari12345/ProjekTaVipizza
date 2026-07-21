@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    fetch('https://power-payee-annex.ngrok-free.dev/api/auth/me', {
+    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/auth/me', {
       headers: { 'Authorization': `Bearer ${savedToken}` }
     })
       .then(res => {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
   // Login dengan real backend, fallback ke mock jika offline
   const loginSimulasi = async (email, password) => {
     try {
-      const response = await fetch('https://power-payee-annex.ngrok-free.dev/api/auth/login', {
+      const response = await fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
   // Register dengan real backend, fallback ke mock jika offline
   const registerSimulasi = async (nama, email, telepon, alamat, password = "pelangganvipizza") => {
     try {
-      const response = await fetch('https://power-payee-annex.ngrok-free.dev/api/auth/register', {
+      const response = await fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, email, password, telepon, alamat })

@@ -26,7 +26,7 @@ export default function ManageMenu() {
   useEffect(() => { muatMenu(); }, []);
 
   const muatMenu = () => {
-    fetch('https://power-payee-annex.ngrok-free.dev/api/menus')
+    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/menus')
       .then(res => {
         if (!res.ok) throw new Error('Gagal load API');
         return res.json();
@@ -92,7 +92,7 @@ export default function ManageMenu() {
     formData.append('is_best_seller', isBestSeller.toString());
     if (fileObj) formData.append('gambar', fileObj);
 
-    const apiURL    = menuTerpilih ? `https://power-payee-annex.ngrok-free.dev/api/menus/${menuTerpilih.id}` : 'https://power-payee-annex.ngrok-free.dev/api/menus';
+    const apiURL    = menuTerpilih ? `https://optimum-setting-incidence-barn.trycloudflare.com/api/menus/${menuTerpilih.id}` : 'https://optimum-setting-incidence-barn.trycloudflare.com/api/menus';
     const apiMethod = menuTerpilih ? 'PUT' : 'POST';
 
     fetch(apiURL, {
@@ -122,7 +122,7 @@ export default function ManageMenu() {
       confirmButtonText: 'Ya, Hapus!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`https://power-payee-annex.ngrok-free.dev/api/menus/${id}`, {
+        fetch(`https://optimum-setting-incidence-barn.trycloudflare.com/api/menus/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })

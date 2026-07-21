@@ -4,8 +4,8 @@
 // URL dasar backend Go. Ubah jika backend di port/host berbeda.
 // ============================================================
 
-export const API_BASE_URL = 'https://power-payee-annex.ngrok-free.dev/api';
-export const UPLOAD_BASE_URL = 'https://power-payee-annex.ngrok-free.dev';
+export const API_BASE_URL = 'https://optimum-setting-incidence-barn.trycloudflare.com/api';
+export const UPLOAD_BASE_URL = 'https://optimum-setting-incidence-barn.trycloudflare.com';
 
 // Helper fetch dengan token JWT otomatis
 export async function apiFetch(endpoint, options = {}, token = null) {

@@ -56,7 +56,7 @@ export default function Masuk() {
 
     setForgotLoading(true);
     try {
-      const response = await fetch('https://power-payee-annex.ngrok-free.dev/api/auth/forgot-password', {
+      const response = await fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })

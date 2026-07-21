@@ -11,7 +11,7 @@ export default function KelolaKategori() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ nama: '', deskripsi: '', aktif: true });
 
-  const API = 'https://power-payee-annex.ngrok-free.dev/api';
+  const API = 'https://optimum-setting-incidence-barn.trycloudflare.com/api';
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 

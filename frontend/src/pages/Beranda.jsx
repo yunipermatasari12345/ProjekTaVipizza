@@ -62,7 +62,7 @@ export default function Beranda() {
     // Fungsi untuk mengambil data terbaru (Menu & Ulasan)
     const fetchData = () => {
       // 1. Fetch Menu (Untuk Best Seller)
-      fetch('https://power-payee-annex.ngrok-free.dev/api/menus')
+      fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/menus')
         .then(r => r.json())
         .then(d => {
           if (Array.isArray(d) && d.length > 0) {
@@ -83,7 +83,7 @@ export default function Beranda() {
         .catch(() => setMenuBestSeller(menuDefault));
 
       // 2. Fetch Ulasan Terbaru (Polling untuk Testimoni)
-      fetch('https://power-payee-annex.ngrok-free.dev/api/ulasan/terbaru')
+      fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/ulasan/terbaru')
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
@@ -118,7 +118,7 @@ export default function Beranda() {
     }, 10000);
 
     // Fetch Promo (Hanya sekali di awal)
-    fetch('https://power-payee-annex.ngrok-free.dev/api/promo')
+    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/promo')
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setPromoAktif(d.slice(0, 1)); })
       .catch(() => {});
@@ -147,7 +147,7 @@ export default function Beranda() {
         komentar: formTesti.teks
       };
 
-      const res = await fetch('https://power-payee-annex.ngrok-free.dev/api/ulasan/publik', {
+      const res = await fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/ulasan/publik', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -208,7 +208,7 @@ export default function Beranda() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`https://power-payee-annex.ngrok-free.dev/api/ulasan/${id}`, {
+        const response = await fetch(`https://optimum-setting-incidence-barn.trycloudflare.com/api/ulasan/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });

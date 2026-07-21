@@ -19,7 +19,7 @@ export default function DataPelanggan() {
     id: null, nama: '', email: '', telepon: '', alamat: '', password: '', peran: 'pelanggan'
   });
 
-  const API = 'https://power-payee-annex.ngrok-free.dev/api';
+  const API = 'https://optimum-setting-incidence-barn.trycloudflare.com/api';
   const headers = { 'Authorization': `Bearer ${token}` };
 
   const ambilData = async () => {

@@ -27,7 +27,7 @@ export default function DashboardPelanggan() {
   const muatData = () => {
     if (!token) return;
     setLoading(true);
-    fetch('https://power-payee-annex.ngrok-free.dev/api/dashboard', {
+    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/dashboard', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
