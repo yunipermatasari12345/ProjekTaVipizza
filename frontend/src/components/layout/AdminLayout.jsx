@@ -52,8 +52,8 @@ export default function AdminLayout() {
     const cekNotifikasi = async () => {
       try {
         const [ordRes, pesanRes] = await Promise.all([
-          fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/orders', { headers }),
-          fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/pesan-pelanggan', { headers }),
+          fetch('http://localhost:9000/api/orders', { headers }),
+          fetch('http://localhost:9000/api/pesan-pelanggan', { headers }),
         ]);
         if (ordRes.ok) {
           const orders = await ordRes.json();

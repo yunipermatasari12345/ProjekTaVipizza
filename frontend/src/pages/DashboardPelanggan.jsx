@@ -27,7 +27,7 @@ export default function DashboardPelanggan() {
   const muatData = () => {
     if (!token) return;
     setLoading(true);
-    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/dashboard', {
+    fetch('http://localhost:9000/api/dashboard', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

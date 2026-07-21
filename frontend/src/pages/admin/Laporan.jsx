@@ -23,7 +23,7 @@ export default function Reports() {
         tanggal_akhir: tanggalAkhir,
       });
 
-      const response = await fetch(`https://optimum-setting-incidence-barn.trycloudflare.com/api/reports/sales?${params.toString()}`, {
+      const response = await fetch(`http://localhost:9000/api/reports/sales?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -60,7 +60,7 @@ export default function Reports() {
         tanggal_akhir: tanggalAkhir,
       });
 
-      const response = await fetch(`https://optimum-setting-incidence-barn.trycloudflare.com/api/reports/pdf?${params.toString()}`, {
+      const response = await fetch(`http://localhost:9000/api/reports/pdf?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

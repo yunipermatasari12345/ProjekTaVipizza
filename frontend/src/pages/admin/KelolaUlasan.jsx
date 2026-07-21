@@ -16,7 +16,7 @@ export default function KelolaUlasan() {
 
   const muatUlasan = async () => {
     try {
-      const res = await fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/ulasan', {
+      const res = await fetch('http://localhost:9000/api/ulasan', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -43,7 +43,7 @@ export default function KelolaUlasan() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`https://optimum-setting-incidence-barn.trycloudflare.com/api/ulasan/${id}`, {
+          const res = await fetch(`http://localhost:9000/api/ulasan/${id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
           });

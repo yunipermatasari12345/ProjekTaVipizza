@@ -13,7 +13,7 @@ export default function RiwayatPesanan() {
       setLoading(false);
       return;
     }
-    fetch('https://optimum-setting-incidence-barn.trycloudflare.com/api/orders/my', {
+    fetch('http://localhost:9000/api/orders/my', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
