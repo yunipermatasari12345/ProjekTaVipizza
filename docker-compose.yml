@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # 1. Database MySQL 8.0
+  db:
+    image: mysql:8.0
+    container_name: vipizza_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: vipizzapassword
+      MYSQL_DATABASE: vipizza
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/vipizza.sql:/docker-entrypoint-initdb.d/vipizza.sql
+
+  # 2. Backend Go (REST API Port 9000)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vipizza_backend
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: vipizzapassword
+      DB_NAME: vipizza
+      PORT: 9000
+    depends_on:
+      - db
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # 3. Frontend React (Nginx Web Server Port 80)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vipizza_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
