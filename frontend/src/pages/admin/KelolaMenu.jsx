@@ -23,7 +23,54 @@ export default function ManageMenu() {
   const [isFavorit, setIsFavorit] = useState(false);
   const [isBestSeller, setIsBestSeller] = useState(false);
 
-  useEffect(() => { muatMenu(); }, []);
+  // State Banner Panduan Ukuran
+  const [panduanUrl, setPanduanUrl] = useState('/panduan-ukuran.jpeg');
+  const [filePanduan, setFilePanduan] = useState(null);
+  const [loadingPanduan, setLoadingPanduan] = useState(false);
+
+  useEffect(() => { 
+    muatMenu(); 
+    muatPanduan();
+  }, []);
+
+  const muatPanduan = () => {
+    fetch('http://localhost:9000/api/panduan-ukuran')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.gambar_url) setPanduanUrl(data.gambar_url);
+      })
+      .catch(() => {});
+  };
+
+  const handleUploadPanduan = async (e) => {
+    e.preventDefault();
+    if (!filePanduan) {
+      Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Pilih file gambar poster panduan ukuran terlebih dahulu!' });
+      return;
+    }
+    setLoadingPanduan(true);
+    const fd = new FormData();
+    fd.append('gambar', filePanduan);
+    try {
+      const res = await fetch('http://localhost:9000/api/panduan-ukuran', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPanduanUrl(data.gambar_url);
+        setFilePanduan(null);
+        Swal.fire({ icon: 'success', title: 'Berhasil 🖼️', text: 'Poster Panduan Ukuran Pizza berhasil diperbarui!', timer: 2000, showConfirmButton: false });
+      } else {
+        throw new Error(data.error || 'Gagal upload');
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+    } finally {
+      setLoadingPanduan(false);
+    }
+  };
 
   const muatMenu = () => {
     fetch('http://localhost:9000/api/menus')
@@ -284,6 +331,43 @@ export default function ManageMenu() {
         <button className="btn-primary text-sm py-2 px-4 flex items-center gap-2" onClick={handleBukaTambah}>
           <Plus className="w-4 h-4" /> Tambah Menu
         </button>
+      </div>
+
+      {/* Card Kelola Poster Panduan Ukuran */}
+      <div className="bg-white border border-gray-300 rounded p-4 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 shrink-0 shadow-inner flex items-center justify-center">
+            <img 
+              src={getImageUrl(panduanUrl)} 
+              alt="Panduan Ukuran" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+              🖼️ Poster Panduan Ukuran Pizza
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5 max-w-md">
+              Poster infografis perbandingan ukuran Pizza (Medium 22cm vs Large 25cm) yang tampil di Katalog & Modal Detail Pemesanan Pelanggan.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleUploadPanduan} className="flex items-center gap-2 shrink-0">
+          <input 
+            type="file" 
+            accept="image/*"
+            onChange={(e) => setFilePanduan(e.target.files[0])}
+            className="text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+          />
+          <button 
+            type="submit" 
+            disabled={loadingPanduan || !filePanduan}
+            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+          >
+            {loadingPanduan ? '⏳ Mengunggah...' : 'Upload Baru'}
+          </button>
+        </form>
       </div>
 
       <div className="card-bs overflow-hidden p-0">

@@ -111,6 +111,7 @@ func main() {
 
 		// Galeri (publik - hanya GET untuk melihat)
 		api.GET("/galeri", handlers.AmbilSemuaGaleri)
+		api.GET("/panduan-ukuran", handlers.AmbilPanduanUkuran)
 
 		// Ulasan (publik)
 		api.GET("/ulasan/terbaru", handlers.AmbilSemuaUlasanTerbaru)
@@ -194,6 +195,7 @@ func main() {
 				adminGroup.GET("/ulasan", handlers.AmbilSemuaUlasanAdmin)
 				adminGroup.DELETE("/ulasan/:id", handlers.HapusUlasan)
 				adminGroup.DELETE("/galeri/:id", handlers.HapusGaleri)
+				adminGroup.POST("/panduan-ukuran", handlers.SimpanPanduanUkuran)
 
 				// Dashboard ringkasan
 				adminGroup.GET("/reports/summary", handlers.RingkasanDashboard)

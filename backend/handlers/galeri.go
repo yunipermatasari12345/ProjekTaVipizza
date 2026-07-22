@@ -85,3 +85,37 @@ func HapusGaleri(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Foto berhasil dihapus"})
 }
+
+var PanduanUkuranURL = "/panduan-ukuran.jpeg"
+
+// AmbilPanduanUkuran mengambil URL gambar panduan ukuran (Publik)
+func AmbilPanduanUkuran(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"gambar_url": PanduanUkuranURL})
+}
+
+// SimpanPanduanUkuran memperbarui gambar panduan ukuran (Khusus Admin)
+func SimpanPanduanUkuran(c *gin.Context) {
+	file, err := c.FormFile("gambar")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gambar wajib diunggah"})
+		return
+	}
+
+	dirUpload := "uploads/galeri"
+	_ = os.MkdirAll(dirUpload, os.ModePerm)
+
+	namaFile := fmt.Sprintf("panduan_ukuran_%d%s", time.Now().Unix(), filepath.Ext(file.Filename))
+	pathFile := filepath.Join(dirUpload, namaFile)
+
+	if err := c.SaveUploadedFile(file, pathFile); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan gambar panduan ukuran"})
+		return
+	}
+
+	PanduanUkuranURL = "/uploads/galeri/" + namaFile
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Gambar panduan ukuran berhasil diperbarui!",
+		"gambar_url": PanduanUkuranURL,
+	})
+}

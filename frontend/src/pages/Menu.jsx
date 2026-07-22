@@ -98,8 +98,16 @@ export default function Menu() {
   const [semuaMenu, setSemuaMenu] = useState([]);
   const [menusRekomendasi, setMenusRekomendasi] = useState([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
+  const [panduanUrl, setPanduanUrl] = useState('/panduan-ukuran.jpeg');
 
   useEffect(() => {
+    // Fetch gambar panduan ukuran
+    fetch('http://localhost:9000/api/panduan-ukuran')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.gambar_url) setPanduanUrl(data.gambar_url);
+      })
+      .catch(() => {});
     const defaultPizzaMenus = [
       {
         id: 1,
@@ -242,7 +250,7 @@ export default function Menu() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-12 max-w-xs mx-auto w-full rounded-2xl overflow-hidden shadow-xl border-4 border-white">
             <img 
-              src="/panduan-ukuran.jpeg" 
+              src={getImageUrl(panduanUrl)} 
               alt="Panduan Ukuran Vipizza" 
               className="w-full h-auto object-contain"
             />
