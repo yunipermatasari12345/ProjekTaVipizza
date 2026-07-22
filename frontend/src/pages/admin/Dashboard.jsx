@@ -29,6 +29,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     ambilData();
+    const interval = setInterval(ambilData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const ambilData = async () => {

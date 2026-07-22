@@ -221,7 +221,7 @@ func AmbilSemuaUlasanAdmin(c *gin.Context) {
 	c.JSON(http.StatusOK, ulasan)
 }
 
-// HapusUlasan menghapus ulasan berdasarkan ID (Khusus Admin)
+// HapusUlasan menghapus ulasan berdasarkan ID (Khusus Admin) & memperbarui ulang rating menu di katalog
 func HapusUlasan(c *gin.Context) {
 	id := c.Param("id")
 	var ulasan models.Ulasan
@@ -231,10 +231,47 @@ func HapusUlasan(c *gin.Context) {
 		return
 	}
 
-	if err := config.DB.Delete(&ulasan).Error; err != nil {
+	menuID := ulasan.MenuID
+
+	// Gunakan transaksi untuk menghapus ulasan & menghitung ulang rating menu
+	err := config.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&ulasan).Error; err != nil {
+			return err
+		}
+
+		if menuID > 0 {
+			var totalCount int64
+			var avgRating float64
+
+			tx.Model(&models.Ulasan{}).Where("menu_id = ?", menuID).Count(&totalCount)
+
+			if totalCount > 0 {
+				type Result struct {
+					Average float64
+				}
+				var res Result
+				tx.Model(&models.Ulasan{}).Where("menu_id = ?", menuID).Select("COALESCE(AVG(rating), 5.0) as average").Scan(&res)
+				avgRating = res.Average
+			} else {
+				avgRating = 5.0
+				totalCount = 0
+			}
+
+			if err := tx.Model(&models.Menu{}).Where("id = ?", menuID).Updates(map[string]interface{}{
+				"rating":        avgRating,
+				"jumlah_ulasan": totalCount,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus ulasan"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Ulasan berhasil dihapus"})
+	c.JSON(http.StatusOK, gin.H{"message": "Ulasan berhasil dihapus dan rating menu katalog telah diperbarui"})
 }

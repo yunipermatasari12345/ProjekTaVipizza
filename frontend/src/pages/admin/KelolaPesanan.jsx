@@ -286,7 +286,21 @@ export default function KelolaPesanan() {
                 <div className="bg-gray-50 rounded p-3 border border-gray-200/60">
                   <p className="text-sm font-bold text-gray-800">{pesananTerpilih.nama_penerima || pesananTerpilih.pengguna?.nama || 'Anonim'}</p>
                   <p className="text-xs text-gray-600 mt-0.5">WhatsApp: {pesananTerpilih.telepon}</p>
-                  <p className="text-xs text-gray-600 mt-1.5 leading-relaxed bg-white p-2 rounded border border-gray-100">{pesananTerpilih.alamat_pengiriman}</p>
+                  <div className="text-xs text-gray-600 mt-1.5 leading-relaxed bg-white p-2.5 rounded border border-gray-100 whitespace-pre-line">
+                    {pesananTerpilih.alamat_pengiriman}
+                    {pesananTerpilih.alamat_pengiriman && pesananTerpilih.alamat_pengiriman.includes('https://maps.google.com') && (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <a 
+                          href={pesananTerpilih.alamat_pengiriman.match(/https:\/\/maps\.google\.com[^\s\n]+/)?.[0] || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+                        >
+                          🗺️ Buka Navigasi Google Maps ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

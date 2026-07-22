@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem(STORAGE_USER_KEY);
     localStorage.removeItem(STORAGE_TOKEN_KEY);
+    localStorage.removeItem('vipizza_cart'); // Bersihkan keranjang saat logout
   };
 
   // Login dengan real backend, fallback ke mock jika offline

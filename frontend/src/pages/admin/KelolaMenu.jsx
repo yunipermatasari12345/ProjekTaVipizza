@@ -70,8 +70,8 @@ export default function ManageMenu() {
   const handleSimpanMenu = (e) => {
     e.preventDefault();
 
-    if (!nama || !harga || !stok) {
-      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon isi seluruh field wajib!' });
+    if (!nama || !hargaMedium || !stok) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon isi seluruh field wajib (Nama, Harga Medium, Stok)!' });
       return;
     }
 

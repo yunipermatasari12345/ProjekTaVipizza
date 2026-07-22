@@ -29,6 +29,7 @@ export default function TrackOrder() {
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const [verifikasiLoading, setVerifikasiLoading] = useState(false);
   const [snapTokenAktif, setSnapTokenAktif] = useState('');
+  const [modalQrisBuka, setModalQrisBuka] = useState(false);
 
   // State Ulasan
   const [modalUlasanBuka, setModalUlasanBuka] = useState(false);
@@ -573,23 +574,54 @@ export default function TrackOrder() {
                   </div>
                 </div>
               ) : (
-                // Scan QRIS
-                <div className="flex flex-col sm:flex-row gap-6 items-center">
-                  {/* Mock QR Code */}
-                  <div className="w-40 h-40 border-4 border-slate-200 p-2 bg-white rounded-2xl flex items-center justify-center shrink-0 shadow-inner relative z-10">
-                    <div className="w-full h-full bg-slate-100 rounded-xl flex flex-col items-center justify-center text-[10px] text-slate-400 font-bold gap-1">
-                      <span className="text-3xl select-none">🔲</span>
-                      <span>QRIS DUKUNG UMKM</span>
-                      <span className="text-brand-orange text-[8px] uppercase">Vipizza Padang</span>
+                // Scan QRIS Resmi Owner
+                <div className="flex flex-col items-center sm:flex-row gap-6 bg-gradient-to-br from-amber-50/70 to-pink-50/40 p-4 border border-amber-200/70 rounded-2xl">
+                  <div 
+                    onClick={() => setModalQrisBuka(true)}
+                    className="w-52 shrink-0 bg-white p-3 rounded-2xl border border-slate-200 shadow-md flex flex-col items-center text-center cursor-pointer group hover:shadow-xl hover:border-brand-orange transition-all transform hover:-translate-y-0.5"
+                  >
+                    <div className="relative overflow-hidden rounded-xl w-full">
+                      <img 
+                        src="/qris-owner.jpg" 
+                        alt="QRIS QR VIPIZZA HOMEMADE PADANG" 
+                        className="w-full h-auto rounded-xl object-contain border border-slate-100 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-bold gap-1 rounded-xl">
+                        <span>🔍 Perbesar QRIS</span>
+                      </div>
                     </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setModalQrisBuka(true); }}
+                      className="text-[11px] font-bold text-brand-orange hover:text-orange-600 mt-2.5 flex items-center gap-1 bg-pink-50 px-3 py-1 rounded-full border border-pink-100 cursor-pointer transition-colors"
+                    >
+                      🔍 Perbesar QRIS (Pop-up)
+                    </button>
                   </div>
-                  <div className="flex-1 flex flex-col gap-2 text-left">
-                    <span className="font-bold text-xs text-slate-700">Scan QRIS UMKM</span>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Arahkan kamera e-wallet Anda (Gopay, OVO, Dana, LinkAja, atau Mobile Banking) ke kode QRIS di samping.
+                  <div className="flex-1 flex flex-col gap-2.5 text-left">
+                    <span className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4 text-brand-orange" />
+                      QRIS Resmi ViPizza Homemade Padang
+                    </span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Silakan buka aplikasi m-Banking (BNI wondr, BRImo, BCA mobile, Mandiri) atau E-Wallet (GoPay, OVO, DANA, ShopeePay, LinkAja) Anda, lalu scan QRIS di samping.
                     </p>
-                    <span className="text-brand-orange font-extrabold text-xs bg-pink-50 px-3 py-1.5 rounded self-start mt-1 border border-pink-100">
-                      Total tagihan: Rp {pesanan.total_harga.toLocaleString('id-ID')}
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200 text-xs flex flex-col gap-1 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-[11px]">Nama Merchant:</span>
+                        <span className="font-bold text-slate-800 text-[11px]">QR VIPIZZA HOMEMADE PADANG</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-[11px]">NMID:</span>
+                        <span className="font-mono font-bold text-slate-800 text-[11px]">ID1026479269890</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-[11px]">Layanan:</span>
+                        <span className="font-bold text-brand-orange text-[10px]">Semua E-Wallet & M-Banking (GPN)</span>
+                      </div>
+                    </div>
+                    <span className="text-brand-orange font-extrabold text-xs bg-orange-100/80 px-3.5 py-2 rounded-xl self-start mt-1 border border-orange-200">
+                      Total Tagihan: Rp {pesanan.total_harga.toLocaleString('id-ID')}
                     </span>
                   </div>
                 </div>
@@ -955,6 +987,65 @@ export default function TrackOrder() {
                 {loadingUlasan ? "Mengirim..." : "Kirim Ulasan"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Lightbox Popup QRIS */}
+      {modalQrisBuka && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn cursor-pointer"
+          onClick={() => setModalQrisBuka(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col items-center text-center relative animate-scaleUp cursor-default border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Tombol Tutup (X) */}
+            <button 
+              onClick={() => setModalQrisBuka(false)}
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-600 p-2 rounded-full transition-colors cursor-pointer"
+              title="Tutup Popup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-3 self-start pl-1">
+              <QrCode className="w-5 h-5 text-brand-orange" />
+              <span className="font-bold text-slate-800 text-base">QRIS ViPizza Padang</span>
+            </div>
+
+            {/* Gambar QRIS Besar (Klik untuk mengecilkan / tutup) */}
+            <div 
+              onClick={() => setModalQrisBuka(false)}
+              className="w-full bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-inner flex flex-col justify-center items-center cursor-pointer group"
+              title="Klik gambar untuk memperkecil"
+            >
+              <img 
+                src="/qris-owner.jpg" 
+                alt="QRIS ViPizza" 
+                className="max-h-[55vh] w-auto object-contain rounded-xl shadow-md border border-white group-hover:scale-[0.99] transition-transform"
+              />
+              <span className="text-[10px] font-bold text-slate-400 mt-2">💡 Klik gambar atau area hitam untuk mengecilkan</span>
+            </div>
+
+            {/* Detail Info di bawah gambar */}
+            <div className="mt-4 w-full bg-amber-50/80 p-3 rounded-xl border border-amber-200/70 text-left text-xs flex flex-col gap-1 text-slate-700">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 text-[11px]">Merchant:</span>
+                <span className="font-bold text-slate-800 text-[11px]">QR VIPIZZA HOMEMADE PADANG</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 text-[11px]">NMID:</span>
+                <span className="font-mono font-bold text-slate-800 text-[11px]">ID1026479269890</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setModalQrisBuka(false)}
+              className="mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-6 rounded-full transition-colors cursor-pointer shadow-md"
+            >
+              Kembali ke Halaman
+            </button>
           </div>
         </div>
       )}

@@ -137,11 +137,18 @@ func BuatPesanan(c *gin.Context) {
 		for _, item := range pesananBaru.ItemPesanan {
 			var m models.Menu
 			tx.First(&m, item.MenuID)
+			namaItem := m.Nama
+			if len(namaItem) > 45 {
+				namaItem = namaItem[:45] + "..."
+			}
+			if namaItem == "" {
+				namaItem = "Menu Pizza"
+			}
 			snapItems = append(snapItems, midtrans.ItemDetails{
 				ID:    fmt.Sprintf("MENU-%d", item.MenuID),
 				Price: int64(item.Harga),
 				Qty:   int32(item.Jumlah),
-				Name:  m.Nama,
+				Name:  namaItem,
 			})
 		}
 
@@ -531,6 +538,9 @@ func RefreshSnapToken(c *gin.Context) {
 		namaMenu := "Menu Pizza"
 		if item.Menu.Nama != "" {
 			namaMenu = item.Menu.Nama
+		}
+		if len(namaMenu) > 45 {
+			namaMenu = namaMenu[:45] + "..."
 		}
 		snapItems = append(snapItems, midtrans.ItemDetails{
 			ID:    fmt.Sprintf("MENU-%d", item.MenuID),

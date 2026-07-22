@@ -16,6 +16,56 @@ export default function Cart() {
   const [telepon, setTelepon] = useState(user?.telepon || '');
   const [alamat, setAlamat] = useState(user?.alamat || '');
   const [metodePembayaran, setMetodePembayaran] = useState('midtrans');
+  const [loadingGPS, setLoadingGPS] = useState(false);
+
+  const handleAmbilLokasiGPS = () => {
+    if (!navigator.geolocation) {
+      Swal.fire({ icon: 'warning', title: 'GPS Tidak Didukung', text: 'Browser Anda tidak mendukung fitur GPS.' });
+      return;
+    }
+    setLoadingGPS(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          const namaJalan = data.display_name || 'Kota Padang';
+          setAlamat(`${namaJalan}\n\n📍 Google Maps Navigasi: ${mapsUrl}`);
+          Swal.fire({
+            icon: 'success',
+            title: 'Lokasi GPS Ditemukan! 📍',
+            text: 'Alamat & titik koordinat Google Maps berhasil diisi.',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } catch (err) {
+          setAlamat(prev => (prev ? `${prev}\n\n📍 Google Maps Navigasi: ${mapsUrl}` : `📍 Google Maps Navigasi: ${mapsUrl}`));
+          Swal.fire({
+            icon: 'success',
+            title: 'Koordinat GPS Berhasil! 📍',
+            text: 'Link Google Maps telah ditambahkan.',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } finally {
+          setLoadingGPS(false);
+        }
+      },
+      () => {
+        setLoadingGPS(false);
+        Swal.fire({
+          icon: 'info',
+          title: 'Izin Lokasi Diperlukan',
+          text: 'Aktifkan izin lokasi (GPS) pada browser/HP Anda untuk mengisi lokasi otomatis.'
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // State Promo
   const [kodePromoInput, setKodePromoInput] = useState('');
@@ -381,15 +431,28 @@ export default function Cart() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Alamat Pengantaran</label>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-bold text-slate-700 block">Alamat Pengantaran</label>
+                        <button 
+                          type="button"
+                          onClick={handleAmbilLokasiGPS}
+                          disabled={loadingGPS}
+                          className="text-[11px] font-bold text-brand-orange hover:text-orange-600 bg-pink-50 hover:bg-pink-100 px-3 py-1 rounded-full border border-pink-200 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
+                        >
+                          {loadingGPS ? '⏳ Membaca GPS...' : '📍 Ambil Lokasi GPS Saya (Auto Maps)'}
+                        </button>
+                      </div>
                       <textarea 
                         placeholder="Sebutkan nama jalan, kelurahan, kecamatan, atau patokan rumah Anda di Kota Padang..."
                         value={alamat}
                         onChange={(e) => setAlamat(e.target.value)}
-                        rows={3}
-                        className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none"
+                        rows={4}
+                        className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none leading-relaxed"
                         required
                       />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        💡 Klik <b>"Ambil Lokasi GPS Saya"</b> di atas untuk melampirkan titik Google Maps otomatis agar kurir ViPizza mudah menuju rumah Anda.
+                      </p>
                     </div>
                   </div>
 
@@ -402,9 +465,9 @@ export default function Cart() {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
                       {[
-                        { value: 'midtrans', label: 'Bayar Otomatis', desc: 'Gopay, VA, dll' },
-                        { value: 'transfer_bank', label: 'Transfer Bank', desc: 'BCA/Mandiri/BNI' },
-                        { value: 'qris', label: 'QRIS', desc: 'Scan QR Code' },
+                        { value: 'midtrans', label: 'Bayar Otomatis', desc: 'GoPay, QRIS, VA Bank (Midtrans)' },
+                        { value: 'qris', label: 'QRIS Owner', desc: 'Scan Barcode QRIS ViPizza Padang' },
+                        { value: 'transfer_bank', label: 'Transfer Bank', desc: 'Transfer BCA / BNI / BSI / BRI' },
                       ].map(met => (
                         <label key={met.value} className={`border rounded-xl p-3 flex flex-col sm:items-center sm:text-center sm:justify-center items-start gap-2 cursor-pointer w-full transition-colors ${metodePembayaran === met.value ? 'border-brand-orange bg-brand-orange-light/30 ring-1 ring-brand-orange' : 'border-slate-200 hover:border-slate-300'}`}>
                           <div className="flex items-center gap-2">
