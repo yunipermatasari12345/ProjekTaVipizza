@@ -58,9 +58,13 @@ export default function Cart() {
       () => {
         setLoadingGPS(false);
         Swal.fire({
+          toast: true,
+          position: 'top-end',
           icon: 'info',
-          title: 'Izin Lokasi Diperlukan',
-          text: 'Aktifkan izin lokasi (GPS) pada browser/HP Anda untuk mengisi lokasi otomatis.'
+          title: 'Ketik Alamat Manual',
+          text: 'Silakan isi/ketik alamat rumah Anda secara manual di kolom alamat.',
+          showConfirmButton: false,
+          timer: 3000
         });
       },
       { enableHighAccuracy: true, timeout: 10000 }
