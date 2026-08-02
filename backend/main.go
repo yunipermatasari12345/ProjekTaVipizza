@@ -222,11 +222,10 @@ func main() {
 // seedDataDefault mengisi data awal ke database jika tabel kosong
 func seedDataDefault() {
 	// 1. Seed data Admin default
-	var hitungAdmin int64
-	config.DB.Model(&models.Pengguna{}).Where("peran = ?", "admin").Count(&hitungAdmin)
-	if hitungAdmin == 0 {
-		hashPassword, _ := utils.HashPassword("adminvipizza")
-		adminDefault := models.Pengguna{
+	hashPassword, _ := utils.HashPassword("adminvipizza")
+	var adminDefault models.Pengguna
+	if err := config.DB.Where("email = ?", "admin@vipizza.com").First(&adminDefault).Error; err != nil {
+		adminDefault = models.Pengguna{
 			Nama:     "Admin Vipizza",
 			Email:    "admin@vipizza.com",
 			Password: hashPassword,
@@ -236,6 +235,12 @@ func seedDataDefault() {
 		}
 		config.DB.Create(&adminDefault)
 		fmt.Println("[SEED] Berhasil menambahkan Admin default (email: admin@vipizza.com, pass: adminvipizza)")
+	} else {
+		config.DB.Model(&adminDefault).Updates(map[string]interface{}{
+			"password": hashPassword,
+			"peran":    "admin",
+		})
+		fmt.Println("[SEED] Berhasil memperbarui password Admin default (email: admin@vipizza.com, pass: adminvipizza)")
 	}
 
 	// 2. Seed data Pelanggan default untuk simulasi

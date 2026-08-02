@@ -211,12 +211,12 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 -- Password: adminvipizza (bcrypt placeholder)
 INSERT INTO `users` (`nama`, `email`, `password`, `peran`, `telepon`, `alamat`, `created_at`, `updated_at`) VALUES
 ('Admin Vipizza', 'admin@vipizza.com',
- '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2a$10$9JyXtvBNDdk5gjPY4V4wIequ0N1nkBBUHTea99bbNNaKfXjRfHb/G',
  'admin', '081234567890', 'Kantor Pusat Vipizza, Kota Padang', NOW(), NOW()),
 ('Budi Santoso', 'budi@vipizza.com',
- '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2a$10$Epn2xdg9wWSBEHa475fqEO9noDfM6/6qyw1chOUfKgFnD8e/UY47C',
  'pelanggan', '082345678901', 'Jl. Khatib Sulaiman No. 12, Padang Utara, Padang', NOW(), NOW())
-ON DUPLICATE KEY UPDATE `nama` = VALUES(`nama`);
+ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `peran` = VALUES(`peran`);
 
 -- Kategori (id=1)
 INSERT INTO `categories` (`nama`, `slug`, `deskripsi`, `aktif`) VALUES
