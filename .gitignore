@@ -35,8 +35,3 @@ go.work.sum
 # Temp
 temp-pdf-pages/
 tmp/
-
-# Uploaded files (kept locally)
-uploads/menus/
-uploads/payments/
-uploads/promo/
