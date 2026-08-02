@@ -1,5 +1,7 @@
+import { UPLOAD_BASE_URL } from '../config/api';
+
 export const getImageUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:9000${url}`;
+  return `${UPLOAD_BASE_URL}${url}`;
 };

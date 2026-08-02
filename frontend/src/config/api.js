@@ -4,8 +4,9 @@
 // URL dasar backend Go. Ubah jika backend di port/host berbeda.
 // ============================================================
 
-export const API_BASE_URL = 'http://localhost:9000/api';
-export const UPLOAD_BASE_URL = 'http://localhost:9000';
+const getHost = () => (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+export const API_BASE_URL = `http://${getHost()}:9000/api`;
+export const UPLOAD_BASE_URL = `http://${getHost()}:9000`;
 
 // Helper fetch dengan token JWT otomatis
 export async function apiFetch(endpoint, options = {}, token = null) {

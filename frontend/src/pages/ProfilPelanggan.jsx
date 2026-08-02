@@ -3,9 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { User, Save, Lock, Eye, EyeOff, Mail, Phone, MapPin } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+import { API_BASE_URL } from '../config/api';
+
 export default function ProfilPelanggan() {
   const { user, token, updateUser } = useAuth();
-  const API = 'http://localhost:9000/api';
+  const API = API_BASE_URL;
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
   const [form, setForm] = useState({ nama: user?.nama || '', telepon: user?.telepon || '', alamat: user?.alamat || '' });
