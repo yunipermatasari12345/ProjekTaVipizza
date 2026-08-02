@@ -70,9 +70,12 @@ func BuatPesanan(c *gin.Context) {
 		}
 
 		// Kurangi stok menu
-		menu.Stok -= itemReq.Jumlah
-		menu.Tersedia = menu.Stok > 0
-		if err := tx.Save(&menu).Error; err != nil {
+		stokBaru := menu.Stok - itemReq.Jumlah
+		tersediaBaru := stokBaru > 0
+		if err := tx.Model(&models.Menu{}).Where("id = ?", menu.ID).Updates(map[string]interface{}{
+			"stok":     stokBaru,
+			"tersedia": tersediaBaru,
+		}).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui stok menu"})
 			return
