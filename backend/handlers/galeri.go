@@ -90,6 +90,12 @@ var PanduanUkuranURL = "/panduan-ukuran.jpeg"
 
 // AmbilPanduanUkuran mengambil URL gambar panduan ukuran (Publik)
 func AmbilPanduanUkuran(c *gin.Context) {
+	if PanduanUkuranURL == "/panduan-ukuran.jpeg" || PanduanUkuranURL == "" {
+		files, _ := filepath.Glob("uploads/galeri/panduan_ukuran_*")
+		if len(files) > 0 {
+			PanduanUkuranURL = "/" + filepath.ToSlash(files[len(files)-1])
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"gambar_url": PanduanUkuranURL})
 }
 
