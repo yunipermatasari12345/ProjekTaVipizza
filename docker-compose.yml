@@ -31,6 +31,9 @@ services:
       DB_PASSWORD: vipizzapassword
       DB_NAME: vipizza
       PORT: 9000
+      MIDTRANS_SERVER_KEY: SB-Mid-server-wyOpJzAc75xY9vv1
+      MIDTRANS_CLIENT_KEY: Mid-client-wyOpJzAc75xY9vv1
+      MIDTRANS_ENVIRONMENT: sandbox
     depends_on:
       - db
     volumes:

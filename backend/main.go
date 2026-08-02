@@ -243,30 +243,10 @@ func seedDataDefault() {
 		fmt.Println("[SEED] Berhasil memperbarui password Admin default (email: admin@vipizza.com, pass: adminvipizza)")
 	}
 
-	// 2. Seed data Pelanggan default untuk simulasi
-	var hitungCustomer int64
-	config.DB.Model(&models.Pengguna{}).Where("peran = ?", "pelanggan").Count(&hitungCustomer)
-	if hitungCustomer == 0 {
-		hashPassword, _ := utils.HashPassword("pelangganvipizza")
-		customerDefault := models.Pengguna{
-			Nama:     "Budi Santoso",
-			Email:    "budi@vipizza.com",
-			Password: hashPassword,
-			Peran:    "pelanggan",
-			Telepon:  "082345678901",
-			Alamat:   "Jl. Khatib Sulaiman No. 12, Padang Utara, Padang",
-		}
-		config.DB.Create(&customerDefault)
-		fmt.Println("[SEED] Berhasil menambahkan Pelanggan default (email: budi@vipizza.com, pass: pelangganvipizza)")
-	} else {
-		// Update email pelanggan lama (budi@gmail.com -> budi@vipizza.com)
-		var customerLama models.Pengguna
-		result := config.DB.Where("peran = ? AND email = ?", "pelanggan", "budi@gmail.com").First(&customerLama)
-		if result.Error == nil {
-			config.DB.Model(&customerLama).Update("email", "budi@vipizza.com")
-			fmt.Println("[SEED] Memperbarui email pelanggan: budi@gmail.com -> budi@vipizza.com")
-		}
-	}
+	// 2. Seed & Sync data Pelanggan default
+	hashCustPassword, _ := utils.HashPassword("pelangganvipizza")
+	config.DB.Model(&models.Pengguna{}).Where("peran = ?", "pelanggan").Update("password", hashCustPassword)
+	fmt.Println("[SEED] Berhasil meng-sync password seluruh Pelanggan (pass: pelangganvipizza)")
 
 	// 3. Seed data Kategori default
 	var hitungKategori int64
