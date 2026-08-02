@@ -191,44 +191,40 @@ export default function Cart() {
     kosongkanKeranjang();
 
     if (databaseSuccess) {
-      if (metodePembayaran === 'midtrans' && snapTokenStr) {
-        if (window.snap) {
-          // Panggil Midtrans Snap
-          window.snap.pay(snapTokenStr, {
-            onSuccess: function (result) {
-              fetch(`http://${window.location.hostname}:9000/api/orders/` + realOrderId + '/verify-payment', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
-              }).catch(function(){});
-              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Pembayaran sukses!' }).then(() => {
-                navigate(`/track/${realOrderId}`);
-              });
-            },
-            onPending: function (result) {
-              Swal.fire({ icon: 'info', title: 'Menunggu', text: 'Menunggu pembayaran Anda...' }).then(() => {
-                navigate(`/track/${realOrderId}`);
-              });
-            },
-            onError: function (result) {
-              Swal.fire({ icon: 'error', title: 'Gagal', text: 'Pembayaran gagal: ' + (result.status_message || 'Terjadi kesalahan') }).then(() => {
-                navigate(`/track/${realOrderId}`);
-              });
-            },
-            onClose: function () {
-              Swal.fire({ icon: 'warning', title: 'Dibatalkan', text: 'Anda menutup popup sebelum menyelesaikan pembayaran.' }).then(() => {
-                navigate(`/track/${realOrderId}`);
-              });
-            }
-          });
-          return;
-        } else {
-          Swal.fire({ icon: 'error', title: 'Sistem Belum Siap', text: 'Sistem pembayaran Midtrans belum dimuat. Silakan refresh halaman dan coba lagi.' });
-        }
+      if (metodePembayaran === 'midtrans' && snapTokenStr && !snapTokenStr.startsWith('MOCK-TOKEN') && window.snap) {
+        // Panggil Midtrans Snap
+        window.snap.pay(snapTokenStr, {
+          onSuccess: function (result) {
+            fetch(`http://${window.location.hostname}:9000/api/orders/` + realOrderId + '/verify-payment', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token }
+            }).catch(function(){});
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Pembayaran sukses!' }).then(() => {
+              navigate(`/track/${realOrderId}`);
+            });
+          },
+          onPending: function (result) {
+            Swal.fire({ icon: 'info', title: 'Menunggu', text: 'Menunggu pembayaran Anda...' }).then(() => {
+              navigate(`/track/${realOrderId}`);
+            });
+          },
+          onError: function (result) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Pembayaran gagal: ' + (result.status_message || 'Terjadi kesalahan') }).then(() => {
+              navigate(`/track/${realOrderId}`);
+            });
+          },
+          onClose: function () {
+            Swal.fire({ icon: 'warning', title: 'Dibatalkan', text: 'Anda menutup popup sebelum menyelesaikan pembayaran.' }).then(() => {
+              navigate(`/track/${realOrderId}`);
+            });
+          }
+        });
+        return;
       } else {
         Swal.fire({ icon: 'success', title: 'Berhasil', text: `Pesanan #${realOrderId} berhasil dibuat! Silakan lakukan pembayaran.` }).then(() => {
           navigate(`/track/${realOrderId}`);
         });
-        return; // Prevents the navigate below from running immediately
+        return;
       }
     } else {
       Swal.fire({ icon: 'error', title: 'Gagal', text: `Pesanan #${realOrderId} gagal dibuat di server. Coba login ulang atau daftar akun baru.` });

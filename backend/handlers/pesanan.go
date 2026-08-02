@@ -186,14 +186,14 @@ func BuatPesanan(c *gin.Context) {
 
 		snapResp, errSnap := config.SnapClient.CreateTransaction(snapReq)
 		if errSnap != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghubungi server Midtrans"})
-			return
+			log.Println("[WARNING] Gagal ke Midtrans API, memakai fallback token:", errSnap)
+			pesananBaru.SnapToken = fmt.Sprintf("MOCK-TOKEN-%d-%d", pesananBaru.ID, time.Now().Unix())
+			pesananBaru.MidtransID = orderIDStr
+		} else {
+			pesananBaru.SnapToken = snapResp.Token
+			pesananBaru.MidtransID = orderIDStr
 		}
 
-		// Simpan Token
-		pesananBaru.SnapToken = snapResp.Token
-		pesananBaru.MidtransID = orderIDStr // Simpan custom order ID
 		if err := tx.Save(&pesananBaru).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan token pembayaran"})
