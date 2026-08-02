@@ -35,4 +35,4 @@ export async function apiFetch(endpoint, options = {}, token = null) {
 }
 
 // Nomor WhatsApp admin UMKM (untuk link wa.me fallback di frontend)
-export const ADMIN_WA = '6281234567890';
+export const ADMIN_WA = '6282171016190';

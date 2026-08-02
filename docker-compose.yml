@@ -31,9 +31,11 @@ services:
       DB_PASSWORD: vipizzapassword
       DB_NAME: vipizza
       PORT: 9000
-      MIDTRANS_SERVER_KEY: SB-Mid-server-wyOpJzAc75xY9vv1
-      MIDTRANS_CLIENT_KEY: Mid-client-wyOpJzAc75xY9vv1
-      MIDTRANS_ENVIRONMENT: sandbox
+      FONNTE_TOKEN: ${FONNTE_TOKEN}
+      ADMIN_WA: ${ADMIN_WA}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY}
+      MIDTRANS_ENVIRONMENT: ${MIDTRANS_ENVIRONMENT}
     depends_on:
       - db
     volumes:
