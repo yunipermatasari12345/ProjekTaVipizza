@@ -77,7 +77,7 @@ func BuatPesanan(c *gin.Context) {
 			"tersedia": tersediaBaru,
 		}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui stok menu"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal memperbarui stok menu: %v", err)})
 			return
 		}
 
