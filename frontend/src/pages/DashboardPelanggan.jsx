@@ -27,7 +27,7 @@ export default function DashboardPelanggan() {
   const muatData = () => {
     if (!token) return;
     setLoading(true);
-    fetch('http://localhost:9000/api/dashboard', {
+    fetch(`http://${window.location.hostname}:9000/api/dashboard`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

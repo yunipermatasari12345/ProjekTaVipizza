@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    fetch('http://localhost:9000/api/auth/me', {
+    fetch(`http://${window.location.hostname}:9000/api/auth/me`, {
       headers: { 'Authorization': `Bearer ${savedToken}` }
     })
       .then(res => {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
   // Login dengan real backend, fallback ke mock jika offline
   const loginSimulasi = async (email, password) => {
     try {
-      const response = await fetch('http://localhost:9000/api/auth/login', {
+      const response = await fetch(`http://${window.location.hostname}:9000/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -119,7 +119,7 @@ export function AuthProvider({ children }) {
   // Register dengan real backend, fallback ke mock jika offline
   const registerSimulasi = async (nama, email, telepon, alamat, password = "pelangganvipizza") => {
     try {
-      const response = await fetch('http://localhost:9000/api/auth/register', {
+      const response = await fetch(`http://${window.location.hostname}:9000/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, email, password, telepon, alamat })

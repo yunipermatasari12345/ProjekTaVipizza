@@ -50,7 +50,7 @@ export default function TrackOrder() {
       // Coba ambil dari REST API Backend
       if (token) {
         try {
-          const response = await fetch(`http://localhost:9000/api/orders/${id}`, {
+          const response = await fetch(`http://${window.location.hostname}:9000/api/orders/${id}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -68,7 +68,7 @@ export default function TrackOrder() {
                 alamat_pengiriman: data.alamat_pengiriman,
                 telepon: data.telepon,
                 metode_pembayaran: data.metode_pembayaran,
-                bukti_pembayaran: data.bukti_pembayaran ? `http://localhost:9000${data.bukti_pembayaran}` : "",
+                bukti_pembayaran: data.bukti_pembayaran ? `http://${window.location.hostname}:9000${data.bukti_pembayaran}` : "",
                 nama_bank: data.nama_bank || "",
                 nama_pengirim: data.nama_pengirim || "",
                 snap_token: data.snap_token || "",
@@ -136,7 +136,7 @@ export default function TrackOrder() {
     if (!token || !id) return;
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:9000/api/orders/${id}`, {
+        const response = await fetch(`http://${window.location.hostname}:9000/api/orders/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
@@ -188,7 +188,7 @@ export default function TrackOrder() {
     if (!token || isRefreshingToken) return;
     setIsRefreshingToken(true);
     try {
-      const response = await fetch(`http://localhost:9000/api/orders/${id}/refresh-token`, {
+      const response = await fetch(`http://${window.location.hostname}:9000/api/orders/${id}/refresh-token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -199,7 +199,7 @@ export default function TrackOrder() {
         if (window.snap) {
           window.snap.pay(data.snap_token, {
             onSuccess: function() { 
-              fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
+              fetch(`http://${window.location.hostname}:9000/api/orders/` + id + '/verify-payment', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token }
               }).catch(function(){});
@@ -230,7 +230,7 @@ export default function TrackOrder() {
     if (window.snap && tokenPakai) {
       window.snap.pay(tokenPakai, {
         onSuccess: function() {
-          fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
+          fetch(`http://${window.location.hostname}:9000/api/orders/` + id + '/verify-payment', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token }
           }).catch(function(){});
@@ -274,7 +274,7 @@ export default function TrackOrder() {
 
     setVerifikasiLoading(true);
     try {
-      const response = await fetch('http://localhost:9000/api/orders/' + id + '/verify-payment', {
+      const response = await fetch(`http://${window.location.hostname}:9000/api/orders/` + id + '/verify-payment', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token
@@ -324,7 +324,7 @@ export default function TrackOrder() {
         formData.append("nama_bank", namaBank);
         formData.append("nama_pengirim", namaPengirim);
 
-        const response = await fetch(`http://localhost:9000/api/orders/${id}/payment`, {
+        const response = await fetch(`http://${window.location.hostname}:9000/api/orders/${id}/payment`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -335,7 +335,7 @@ export default function TrackOrder() {
         if (response.ok) {
           const res = await response.json();
           if (res && res.bukti_pembayaran_url) {
-            finalGambarURL = `http://localhost:9000${res.bukti_pembayaran_url}`;
+            finalGambarURL = `http://${window.location.hostname}:9000${res.bukti_pembayaran_url}`;
             databaseSuccess = true;
           }
         } else {
@@ -403,7 +403,7 @@ export default function TrackOrder() {
         komentar: komentarUlasan
       };
 
-      const res = await fetch(`http://localhost:9000/api/orders/${id}/ulasan`, {
+      const res = await fetch(`http://${window.location.hostname}:9000/api/orders/${id}/ulasan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

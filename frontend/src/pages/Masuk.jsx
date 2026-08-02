@@ -56,7 +56,7 @@ export default function Masuk() {
 
     setForgotLoading(true);
     try {
-      const response = await fetch('http://localhost:9000/api/auth/forgot-password', {
+      const response = await fetch(`http://${window.location.hostname}:9000/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })

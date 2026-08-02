@@ -34,7 +34,7 @@ export default function ManageMenu() {
   }, []);
 
   const muatPanduan = () => {
-    fetch('http://localhost:9000/api/panduan-ukuran')
+    fetch(`http://${window.location.hostname}:9000/api/panduan-ukuran`)
       .then(res => res.json())
       .then(data => {
         if (data && data.gambar_url) setPanduanUrl(data.gambar_url);
@@ -52,7 +52,7 @@ export default function ManageMenu() {
     const fd = new FormData();
     fd.append('gambar', filePanduan);
     try {
-      const res = await fetch('http://localhost:9000/api/panduan-ukuran', {
+      const res = await fetch(`http://${window.location.hostname}:9000/api/panduan-ukuran`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: fd
@@ -73,7 +73,7 @@ export default function ManageMenu() {
   };
 
   const muatMenu = () => {
-    fetch('http://localhost:9000/api/menus')
+    fetch(`http://${window.location.hostname}:9000/api/menus`)
       .then(res => {
         if (!res.ok) throw new Error('Gagal load API');
         return res.json();
@@ -139,7 +139,7 @@ export default function ManageMenu() {
     formData.append('is_best_seller', isBestSeller.toString());
     if (fileObj) formData.append('gambar', fileObj);
 
-    const apiURL    = menuTerpilih ? `http://localhost:9000/api/menus/${menuTerpilih.id}` : 'http://localhost:9000/api/menus';
+    const apiURL    = menuTerpilih ? `http://${window.location.hostname}:9000/api/menus/${menuTerpilih.id}` : `http://${window.location.hostname}:9000/api/menus`;
     const apiMethod = menuTerpilih ? 'PUT' : 'POST';
 
     fetch(apiURL, {
@@ -169,7 +169,7 @@ export default function ManageMenu() {
       confirmButtonText: 'Ya, Hapus!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`http://localhost:9000/api/menus/${id}`, {
+        fetch(`http://${window.location.hostname}:9000/api/menus/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })
