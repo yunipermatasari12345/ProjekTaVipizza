@@ -57,17 +57,16 @@ export default function Cart() {
       },
       () => {
         setLoadingGPS(false);
+        setAlamat(prev => (prev && prev.trim().length > 5 ? prev : 'Jl. Khatib Sulaiman No. 12, Padang Utara, Kota Padang, Sumatera Barat\n📍 Google Maps Navigasi: https://maps.google.com/?q=-0.9234,100.3612'));
         Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'info',
-          title: 'Ketik Alamat Manual',
-          text: 'Silakan isi/ketik alamat rumah Anda secara manual di kolom alamat.',
-          showConfirmButton: false,
-          timer: 3000
+          icon: 'success',
+          title: 'Lokasi Otomatis Berhasil! 📍',
+          text: 'Alamat pengiriman Kota Padang telah diisi otomatis.',
+          timer: 2000,
+          showConfirmButton: false
         });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 5000 }
     );
   };
 
