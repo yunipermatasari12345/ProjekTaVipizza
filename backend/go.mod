@@ -1,6 +1,6 @@
 module vipizza
 
-go 1.20
+go 1.22
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
